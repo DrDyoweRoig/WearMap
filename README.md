@@ -71,7 +71,7 @@ Classification updates in real time when the Tooth Context (jaw, side) is change
 - NumPy ≥ 1.21.0
 - openpyxl ≥ 3.0.0
 
-A pre-built, self-contained Windows executable is available under [Releases](https://github.com/PLACEHOLDER/wearmap/releases) and requires no Python installation.
+A pre-built, self-contained Windows executable is available under [Releases](https://github.com/DrDyoweRoig/wearmap/releases) and requires no Python installation.
 
 ---
 
@@ -80,7 +80,7 @@ A pre-built, self-contained Windows executable is available under [Releases](htt
 ### From source
 
 ```bash
-git clone https://github.com/PLACEHOLDER/wearmap.git
+git clone https://github.com/DrDyoweRoig/wearmap.git
 cd wearmap
 pip install -r requirements.txt
 python main.py
@@ -88,7 +88,7 @@ python main.py
 
 ### Windows executable
 
-Download `Wearmap.exe` from the [Releases](https://github.com/PLACEHOLDER/wearmap/releases) page and run it directly.
+Download `Wearmap.exe` from the [Releases](https://github.com/DrDyoweRoig/wearmap/releases) page and run it directly.
 
 ### Build the executable yourself (Windows)
 
