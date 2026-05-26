@@ -3,7 +3,7 @@
   "description": "<p>WearMap is an open-source desktop application written in Python and PyQt6 for quantitative dental wear image analysis. It provides an integrated environment for measuring and classifying wear features on scanning electron microscope (SEM) and macroscopic dental images, with automated Puech (1983) directionality classification (P1–P4) based on striation slope angle and tooth anatomical context.</p><p>Key features: distance, area, angle, count, and pit measurements with real-world scale calibration; automated Puech directionality classification; non-destructive image enhancement; multi-image folder navigation with per-image state preservation; 2D landmark-based Generalized Procrustes Analysis and k-means clustering; export to Excel (.xlsx with Detail and Summary sheets), CSV, and tab-separated text; annotated image export at original resolution.</p><p>WearMap is designed as an open-source replacement for the discontinued SigmaScan Pro and is distributed as a self-contained Windows executable requiring no Python installation.</p>",
   "creators": [
     {
-      "name": "Epitíte Dyowe Roig, Albert",
+      "name": "Epitíé Dyowe Roig, Albert",
       "affiliation": "University of Barcelona",
       "orcid": "XXXX-XXXX-XXXX-XXXX"
     }
@@ -25,13 +25,5 @@
   "upload_type": "software",
   "version": "1.0.0",
   "language": "eng",
-  "notes": "Published alongside a SoftwareX article. DOI of the article: PENDING.",
-  "related_identifiers": [
-    {
-      "identifier": "PENDING",
-      "relation": "isDescribedBy",
-      "resource_type": "publication-article",
-      "scheme": "doi"
-    }
-  ]
+  "notes": "Published alongside a SoftwareX article (DOI to be added upon acceptance)."
 }
