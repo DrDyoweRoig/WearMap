@@ -1,0 +1,46 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata below."
+type: software
+title: "WearMap: An open-source Python application for quantitative dental wear image analysis and Puech directionality classification"
+version: "1.0.0"
+date-released: "2025-01-01"
+authors:
+  - family-names: "Epitíe Dyowe Roig"
+    given-names: "Albert"
+    affiliation: "University of Barcelona"
+    orcid: "https://orcid.org/XXXX-XXXX-XXXX-XXXX"
+abstract: >
+  WearMap is an open-source desktop application written in Python and PyQt6
+  for quantitative dental wear image analysis. It provides an integrated
+  environment for measuring and classifying wear features on scanning electron
+  microscope (SEM) and macroscopic dental images, with automated Puech (1983)
+  directionality classification (P1–P4) based on striation slope angle and
+  tooth anatomical context. Additional features include scale calibration,
+  area and angle measurement, pit marking, non-destructive image enhancement,
+  2D geometric morphometrics (Generalized Procrustes Analysis + k-means
+  clustering), and structured export to Excel and CSV.
+keywords:
+  - dental wear
+  - SEM
+  - bioarchaeology
+  - dental anthropology
+  - microwear
+  - image analysis
+  - Puech classification
+  - geometric morphometrics
+  - Python
+  - open source
+repository-code: "https://github.com/PLACEHOLDER/wearmap"
+license: MIT
+doi: "PENDING"
+preferred-citation:
+  type: article
+  title: "Wearmap: An open-source Python application for quantitative dental wear image analysis and Puech directionality classification"
+  authors:
+    - family-names: "Epitíe Dyowe Roig"
+      given-names: "Albert"
+      affiliation: "University of Barcelona"
+      orcid: "https://orcid.org/XXXX-XXXX-XXXX-XXXX"
+  journal: "SoftwareX"
+  year: 2025
+  doi: "PENDING"

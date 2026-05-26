@@ -1,0 +1,8 @@
+# Runtime dependencies
+PyQt6>=6.4.0
+Pillow>=9.0.0
+numpy>=1.21.0
+openpyxl>=3.0.0
+
+# Build (Windows executable only — not required to run from source)
+pyinstaller>=5.0.0
