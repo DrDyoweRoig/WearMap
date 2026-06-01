@@ -169,7 +169,7 @@ wearmap/
 
 If you use WearMap in your research, please cite:
 
-> Epitíe Dyowe Roig, A. (2025). Wearmap: An open-source Python application for quantitative dental wear image analysis and Puech directionality classification. *SoftwareX*, [volume], [pages]. DOI: [to be assigned]
+> Dyowe Roig, A. E., Martínez, L. M., & Estebaranz Sánchez, F. (2026). *WearMap: An open-source Python application for quantitative dental wear image analysis and Puech directionality classification (1.0.0)*. Zenodo. https://doi.org/10.5281/zenodo.20487522
 
 BibTeX:
 ```bibtex
