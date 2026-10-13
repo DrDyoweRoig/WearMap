@@ -11,6 +11,12 @@ from main_window import MainWindow
 
 
 def main():
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Wearmap.App")
+        except Exception:
+            pass
     app = QApplication(sys.argv)
     app.setApplicationName("Wearmap")
     app.setApplicationVersion("1.0.0")
