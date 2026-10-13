@@ -73,147 +73,148 @@ r.font.color.rgb = GREEN_DARK
 
 p = doc.add_paragraph()
 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-r = p.add_run("Manual d\u2019usuari  \u00b7  Versi\u00f3 1.0")
+r = p.add_run("User Manual  ·  Version 1.0")
 r.font.name = "Calibri"; r.font.size = Pt(14); r.font.color.rgb = GREEN_MED
 
 p = doc.add_paragraph()
 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-r = p.add_run("Programari d\u2019an\u00e0lisi d\u2019imatge per a la recerca en desgast dental")
+r = p.add_run("Image analysis software for dental wear research")
 r.font.name = "Calibri"; r.font.size = Pt(11); r.font.color.rgb = GREY
 
 doc.add_page_break()
 
 # ── 1
-h1("1. Introducci\u00f3")
-body("Wearmap \u00e9s un programari d\u2019an\u00e0lisi d\u2019imatge dissenyat espec\u00edficament per a la recerca en desgast dental. Permet realitzar mesures de dist\u00e0ncia, \u00e0rea i angle sobre imatges microsc\u00f2piques, classificar el desgast seguint el model de Puech (1983), i exportar totes les dades a Excel o CSV.")
-body("El programa no requereix instal\u00b7laci\u00f3: n\u2019hi ha prou amb executar el fitxer Wearmap.exe.")
+h1("1. Introduction")
+body("Wearmap is an image analysis program designed specifically for dental wear research. It lets you measure distances, areas and angles on microscope images, classify wear following the Puech (1983) model, and export all data to Excel or CSV.")
+body("No installation is required: simply run the Wearmap.exe file.")
 
 # ── 2
-h1("2. Requisits del sistema")
-bullet("Sistema operatiu: Windows 10 o Windows 11 (64 bits)", "Sistema operatiu:")
-bullet("Mem\u00f2ria RAM: m\u00ednim 4 GB", "Mem\u00f2ria RAM:")
-bullet("Espai en disc: ~150 MB per a l\u2019executable", "Espai en disc:")
-bullet("Resoluci\u00f3 de pantalla: m\u00ednim 1280 \u00d7 800 px", "Resoluci\u00f3 de pantalla:")
+h1("2. System requirements")
+bullet("Operating system: Windows 10 or Windows 11 (64-bit)", "Operating system:")
+bullet("Memory: at least 4 GB of RAM", "Memory:")
+bullet("Disk space: about 150 MB for the executable", "Disk space:")
+bullet("Screen resolution: at least 1280 × 800 px", "Screen resolution:")
 
 # ── 3
-h1("3. Primers passos")
-h2("3.1 Obrir una imatge")
-body("Hi ha tres maneres d\u2019obrir una imatge:")
-bullet("Feu clic al bot\u00f3 Open de la barra d\u2019eines.")
-bullet("Aneu al men\u00fa File \u2192 Open Image.")
-bullet("Arrossegueu i deixeu anar (drag & drop) un fitxer d\u2019imatge directament sobre la finestra.")
-body("Formats acceptats: PNG, JPG, JPEG, TIF, TIFF, BMP, GIF, WEBP.")
+h1("3. Getting started")
+h2("3.1 Opening an image")
+body("There are three ways to open an image:")
+bullet("Click the Open button on the toolbar.")
+bullet("Use the menu File → Open Image.")
+bullet("Drag and drop an image file onto the window.")
+body("Supported formats: PNG, JPG, JPEG, TIF, TIFF, BMP, GIF, WEBP.")
 
-h2("3.2 Navegaci\u00f3 entre imatges")
-body("Si la imatge oberta es troba dins d\u2019una carpeta amb m\u00e9s imatges, els botons Prev i Next de la barra d\u2019eines permeten navegar-hi. Cada imatge mant\u00e9 les seves pr\u00f2pies mesures i calibraci\u00f3 independentment.")
+h2("3.2 Browsing images")
+body("If the open image is in a folder with more images, the Prev and Next buttons on the toolbar (or the left and right arrow keys) let you move between them. Each image keeps its own measurements, calibration and analysis area.")
 
-h2("3.3 Zoom i desplacement")
-bullet("Roda del ratol\u00ed: zoom d\u2019entrada i sortida.")
-bullet("Bot\u00f3 Select (S) actiu + arrossegar: desplacement per la imatge.")
-bullet("Zoom in / Zoom out / Fit: zoom manual i ajust a la finestra.")
+h2("3.3 Zoom and panning")
+bullet("Mouse wheel: zoom in and out.")
+bullet("Pan tool (S) active + drag: move around the image.")
+bullet("Zoom in / Zoom out / Fit buttons: manual zoom and fit to window.")
 
 # ── 4
-h1("4. Context de la dent")
-body("Abans de realitzar mesures de dist\u00e0ncia, cal configurar el context de la dent al panell lateral dret. Aquesta informaci\u00f3 s\u2019utilitza per calcular autom\u00e0ticament la classificaci\u00f3 de Puech.")
-h2("4.1 Par\u00e0metres")
-bullet("Tooth (dent): I1, I2, C, Pm3, Pm4, M1, M2, M3", "Tooth (dent):")
-bullet("Jaw (arcada): Upper (maxil\u00b7la) o Lower (mand\u00edbula)", "Jaw (arcada):")
-bullet("Side (costat): Right (dret) o Left (esquerre)", "Side (costat):")
-body("Qualsevol canvi en aquests par\u00e0metres s\u2019aplica immediatament a totes les mesures de la imatge actual.")
+h1("4. Tooth context")
+body("Before measuring distances, set the tooth context in the side panel on the right. This information is used to compute the Puech classification automatically.")
+h2("4.1 Parameters")
+bullet("Tooth: I1, I2, C, Pm3, Pm4, M1, M2, M3", "Tooth:")
+bullet("Jaw: Upper (maxilla) or Lower (mandible)", "Jaw:")
+bullet("Side: Right or Left", "Side:")
+body("Any change to these parameters is applied immediately to all measurements of the current image.")
 
 # ── 5
-h1("5. Eines de mesura")
-body("Seleccioneu l\u2019eina des de la barra d\u2019eines o amb la tecla de drecera corresponent.")
+h1("5. Measurement tools")
+body("Choose a tool from the toolbar or with its keyboard shortcut.")
 
-h2("5.1 Select  [S]")
-body("Mode de selecci\u00f3 i desplacement. Permet seleccionar mesures existents fent clic sobre elles.")
+h2("5.1 Pan  [S]")
+body("Selection and panning mode. Click existing measurements to select them.")
 
 h2("5.2 Distance  [D]")
-body("Mesura la dist\u00e0ncia entre dos punts. Feu clic al punt inicial i al punt final. El resultat mostra la dist\u00e0ncia, la pendent (angle en graus) i la classificaci\u00f3 de Puech (P1\u2013P4) autom\u00e0ticament.")
-body("Classificaci\u00f3 de Puech:")
-bullet("P1 \u2014 Horitzontal (angle \u2264 22,5\u00b0 o \u2265 157,5\u00b0)")
-bullet("P2 \u2014 Vertical (angle entre 67,5\u00b0 i 112,5\u00b0)")
-bullet("P3 \u2014 Mesial")
-bullet("P4 \u2014 Distal")
+body("Measures the distance between two points. Click the start point and then the end point. The result shows the distance, the slope (angle in degrees) and the Puech class (P1–P4), computed automatically.")
+body("Puech classification:")
+bullet("P1 — Horizontal (angle ≤ 22.5° or ≥ 157.5°)")
+bullet("P2 — Vertical (angle between 67.5° and 112.5°)")
+bullet("P3 — Mesial")
+bullet("P4 — Distal")
 
 h2("5.3 Area  [A]")
-body("Dibux un pol\u00edgon per mesurar una \u00e0rea. Feu clic per afegir v\u00e8rtexs. Tanqueu el pol\u00edgon amb el bot\u00f3 dret del ratol\u00ed o fent doble clic. Cal un m\u00ednim de 3 punts.")
+body("Draw a polygon to measure an area. Click to add vertices. Close the polygon with a right-click or a double-click. At least 3 points are required.")
 
 h2("5.4 Angle  [G]")
-body("Mesura l\u2019angle format per tres punts. Feu clic al primer extrem, al v\u00e8rtex i al segon extrem.")
+body("Measures the angle formed by three points. Click the first end, the vertex and the second end.")
 
 h2("5.5 Count  [C]")
-body("Compta objectes. Feu clic per marcar cada objecte (apareix un cercle numerat). Tanqueu el recompte amb el bot\u00f3 dret del ratol\u00ed.")
+body("Counts objects. Click to mark each object (a numbered circle appears). Finish the count with a right-click.")
 
 h2("5.6 Pits  [P]")
-body("Marca pits o punts d\u2019inter\u00e8s amb un punt petit. Funcionament id\u00e8ntic al Count per\u00f2 sense numeraci\u00f3. Les coordenades de cada pit s\u2019exporten a la columna Points (px).")
+body("Marks pits or points of interest with a small dot. It works like Count but without numbering. The coordinates of each pit are exported in the Points (px) column.")
 
 h2("5.7 Calibrate  [K]")
-body("Estableix l\u2019escala real de la imatge. Dibuixeu una l\u00ednia sobre un element de mesura conegut, introduiu la seva longitud real i la unitat (pm, nm, \u00c5, \u03bcm, mm, cm\u2026). Un cop calibrada, totes les mesures es mostren en unitats reals.")
+body("Sets the real-world scale of the image. Draw a line over a feature of known size, enter its real length and unit (pm, nm, Å, μm, mm, cm…). Once calibrated, all measurements are shown in real units.")
 
 h2("5.8 Labels  [L]")
-body("Bot\u00f3 de commutaci\u00f3 que mostra o amaga les etiquetes de text sobre la imatge. Les mesures segueixen actives.")
+body("Toggle button that shows or hides the text labels on the image. Measurements stay active.")
 
-h2("5.9 \u00c0rea d\u2019an\u00e0lisi")
-body("Permet delimitar una zona rectangular de la imatge i comptar nom\u00e9s les estries i els par\u00e0metres que hi cauen a dins.")
-bullet("Edit \u2192 Create Analysis Area\u2026 (o el bot\u00f3 Area box): indiqueu l\u2019amplada i l\u2019al\u00e7ada en unitats calibrades (en px si la imatge no est\u00e0 calibrada).")
-bullet("L\u2019\u00e0rea apareix al centre de la vista. Arrossegueu-la per situar-la i useu les nanses de les vores i les cantonades per canviar-ne la mida (eina Select activa).")
-bullet("El quadre Analysis Area del panell lateral s\u2019actualitza en directe: nombre d\u2019estries, recompte per Puech (P1\u2013P4), longitud mitjana \u00b1 desviaci\u00f3, \u00e0rea, densitat (estries/mm\u00b2) i punts (Count/Pits).")
-bullet("Una estria es compta dins l\u2019\u00e0rea quan el seu punt mig hi \u00e9s.")
-bullet("Cada imatge t\u00e9 la seva pr\u00f2pia \u00e0rea. Edit \u2192 Remove Analysis Area l\u2019elimina.")
+h2("5.9 Analysis area")
+body("Lets you delimit a rectangular region of the image and count only the striations and parameters that fall inside it.")
+bullet("Edit → Create Analysis Area… (or the Area box button): enter the width and height in calibrated units (in px if the image is not calibrated).")
+bullet("The area appears in the centre of the view. Drag it to position it and use the handles on its edges and corners to resize it (with the Pan tool active).")
+bullet("The Analysis Area box in the side panel updates live: number of striations, count per Puech class (P1–P4), mean length ± standard deviation, area, density (striations/mm²) and points (Count/Pits).")
+bullet("A striation counts as inside the area when its midpoint is inside.")
+bullet("Each image has its own area. Edit → Remove Analysis Area deletes it.")
 
 # ── 6
-h1("6. Filtratge d\u2019imatge")
-body("El panell lateral cont\u00e9 la pestanya Filters amb els controls seg\u00fcents:")
-bullet("Brightness / Contrast / Sharpness: lliscadors de \u221a100 a +100.", "Brightness / Contrast / Sharpness:")
-bullet("Blur: desenfocament gaussi\u00e0.", "Blur:")
-bullet("Grayscale: converteix a escala de grisos.", "Grayscale:")
-bullet("Invert: inverteix els colors.", "Invert:")
+h1("6. Image filters")
+body("The side panel has a Filters tab with the following controls:")
+bullet("Brightness / Contrast / Sharpness: sliders from −100 to +100.", "Brightness / Contrast / Sharpness:")
+bullet("Blur: Gaussian blur.", "Blur:")
+bullet("Grayscale: converts to grayscale.", "Grayscale:")
+bullet("Invert: inverts the colours.", "Invert:")
 bullet("Special filters: Auto Levels, Equalize, Edge Detect, Sharpen.", "Special filters:")
-bullet("Reset: restaura la imatge original.", "Reset:")
-body("Els filtres s\u00f3n no destructius: no modifiquen el fitxer original.")
+bullet("Reset: restores the original image.", "Reset:")
+body("Filters are non-destructive: they never modify the original file.")
 
 # ── 7
-h1("7. Exportaci\u00f3 de dades")
-body("Feu clic al bot\u00f3 \U0001f4be Export (o Ctrl+E). S\u2019obriri un di\u00e0leg per escollir el format i la ubicaci\u00f3.")
+h1("7. Exporting data")
+body("Click the Export button (or press Ctrl+E). A dialog opens to choose the format and location.")
 
-h2("7.1 Formats disponibles")
-bullet("Excel (.xlsx): recomanat. Genera un sol fitxer amb dos fulls.", "Excel (.xlsx):")
-bullet("CSV (.csv): genera dos fitxers separats (_detail i _summary).", "CSV (.csv):")
-bullet("Tab-separated (.txt): igual que CSV per\u00f2 separat per tabuladors.", "Tab-separated (.txt):")
+h2("7.1 Available formats")
+bullet("Excel (.xlsx): recommended. A single file with separate sheets.", "Excel (.xlsx):")
+bullet("CSV (.csv): produces separate files (_summary, and _roi when an analysis area exists).", "CSV (.csv):")
+bullet("Tab-separated (.txt): same as CSV but tab-delimited.", "Tab-separated (.txt):")
 
-h2("7.2 Full \u00abDetail\u00bb \u2014 dades individuals")
-body("Una fila per cada mesura amb les columnes: Image, ID, Type, Tooth, Jaw, Side, Unit, Value, Slope (\u00b0), Puech, Points (px).")
+h2("7.2 “Detail” sheet — individual data")
+body("One row per measurement with the columns: Image, ID, Type, Tooth, Jaw, Side, Unit, Value, Slope (°), Puech, Striation Type, Points (px).")
 
-h2("7.3 Full \u00abSummary\u00bb \u2014 estad\u00edstica per Puech")
-body("Una fila per cada categoria de Puech (1\u20134) per imatge, m\u00e9s una fila TOTAL al final de cada imatge amb el recompte global, la mitjana i la desviaci\u00f3 est\u00e0ndard de totes les dist\u00e0ncies.")
+h2("7.3 “Summary” sheet — statistics per Puech class")
+body("One row per Puech category (1–4) per image, plus a TOTAL row at the end of each image with the overall count, mean and standard deviation of all distances.")
 
-h2("7.4 Full \u00abROI\u00bb \u2014 \u00e0rea d\u2019an\u00e0lisi")
-body("Si alguna imatge t\u00e9 una \u00e0rea d\u2019an\u00e0lisi, l\u2019Excel inclou un tercer full ROI amb una fila per imatge: mida, \u00e0rea, estries, recompte per Puech, longitud mitjana i desviaci\u00f3, densitat i punts. En CSV o TXT es genera un fitxer addicional amb el sufix _roi.")
+h2("7.4 “ROI” sheet — analysis area")
+body("If any image has an analysis area, the Excel file includes a third sheet, ROI, with one row per image: size, area, striation count, count per Puech class, mean length and standard deviation, density and points. For CSV or TXT an additional file with the suffix _roi is created.")
 
 # ── 8
-h1("8. Dreceres de teclat")
+h1("8. Keyboard shortcuts")
 table = doc.add_table(rows=1, cols=2)
 table.style = "Table Grid"
 hdr = table.rows[0].cells
-hdr[0].paragraphs[0].add_run("Tecla").bold = True
-hdr[1].paragraphs[0].add_run("Acci\u00f3").bold = True
+hdr[0].paragraphs[0].add_run("Key").bold = True
+hdr[1].paragraphs[0].add_run("Action").bold = True
 shortcuts = [
-    ("S", "Eina Select"),
-    ("D", "Eina Distance"),
-    ("A", "Eina Area"),
-    ("G", "Eina Angle"),
-    ("C", "Eina Count"),
-    ("P", "Eina Pits"),
-    ("K", "Eina Calibrate"),
-    ("L", "Mostrar / amagar etiquetes"),
-    ("Ctrl+O", "Obrir imatge"),
-    ("Ctrl+E", "Exportar mesures"),
-    ("Delete", "Eliminar mesura seleccionada"),
-    ("\u2190 \u2192", "Imatge anterior / seg\u00fcent"),
-    ("Ctrl + =", "Zoom d\u2019entrada"),
-    ("Ctrl + -", "Zoom de sortida"),
-    ("Ctrl + 0", "Ajustar a la finestra"),
+    ("S", "Pan tool"),
+    ("D", "Distance tool"),
+    ("A", "Area tool"),
+    ("G", "Angle tool"),
+    ("C", "Count tool"),
+    ("P", "Pits tool"),
+    ("K", "Calibrate tool"),
+    ("L", "Show / hide labels"),
+    ("Ctrl+O", "Open image"),
+    ("Ctrl+E", "Export measurements"),
+    ("Delete", "Delete selected measurement"),
+    ("← →", "Previous / next image"),
+    ("Ctrl + =", "Zoom in"),
+    ("Ctrl + -", "Zoom out"),
+    ("Ctrl + 0", "Fit to window"),
+    ("F1", "Open this manual"),
 ]
 for k, d in shortcuts:
     row = table.add_row()
@@ -221,27 +222,27 @@ for k, d in shortcuts:
     fmt(rb, bold=True, size=11, color=GREEN_DARK)
     fmt(row.cells[1].paragraphs[0].add_run(d), size=11)
 
-h2("8.1 Ajuda i aparen\u00e7a")
-bullet("F1 (Help \u2192 Read Manual): obre aquest manual.", "F1 (Help \u2192 Read Manual):")
-bullet("View \u2192 Theme: canvia entre tema clar i tema fosc. L\u2019elecci\u00f3 es recorda.", "View \u2192 Theme:")
+h2("8.1 Help and appearance")
+bullet("F1 (Help → Read Manual): opens this manual.", "F1 (Help → Read Manual):")
+bullet("View → Theme: switches between the light and dark theme. Your choice is remembered.", "View → Theme:")
 
 # ── 9
-h1("9. Resoluci\u00f3 de problemes")
-h2("La imatge no s\u2019obre")
-body("Verifiqueu que el format sigui compatible. Els fitxers TIFF multipla pots trigar uns segons.")
-h2("Les etiquetes cobreixen la imatge")
-body("Premeu L o feu clic al bot\u00f3 Labels per amagar-les temporalment.")
-h2("El full Summary apareix buit")
-body("El full Summary nom\u00e9s inclou mesures de tipus Distance amb Puech v\u00e0lid (1\u20134). Comproveu que Jaw i Side estiguin configurats.")
-h2("El valor de Puech \u00e9s sempre \u00ab-\u00bb")
-body("Configureu els desplegables Jaw i Side al panell Tooth Context abans de dibuixar les dist\u00e0ncies.")
+h1("9. Troubleshooting")
+h2("The image does not open")
+body("Check that the format is supported. Large TIFF files may take a few seconds to load.")
+h2("Labels cover the image")
+body("Press L or click the Labels button to hide them temporarily.")
+h2("The Summary sheet is empty")
+body("The Summary sheet only includes Distance measurements with a valid Puech class (1–4). Check that Jaw and Side are set.")
+h2("The Puech value is always “-”")
+body("Set the Jaw and Side drop-downs in the Tooth Context panel before drawing distances.")
 
-# ── FINAL
+# ── END
 doc.add_page_break()
 p = doc.add_paragraph()
 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
 p.paragraph_format.space_before = Pt(60)
-r = p.add_run("Wearmap v1.0  \u00b7  Programari d\u2019an\u00e0lisi de desgast dental")
+r = p.add_run("Wearmap v1.0  ·  Dental wear analysis software")
 r.font.name = "Calibri"; r.font.size = Pt(10); r.font.color.rgb = GREY
 
 doc.save("Wearmap_Manual.docx")
