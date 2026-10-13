@@ -462,6 +462,14 @@ class ImageCanvas(QGraphicsView):
         self.use_puech_colors = False
         self._scale_bar_item: Optional[ScaleBarItem] = None
         self._roi_item: Optional[ROIItem] = None
+        self._accent = "#16A34A"
+
+    def set_theme(self, tokens: dict):
+        self.setBackgroundBrush(QBrush(QColor(tokens["canvas_bg"])))
+        self._accent = tokens["accent"]
+        if self._roi_item is not None:
+            self._roi_item.accent = QColor(self._accent)
+            self._roi_item.update()
 
     # ── Analysis area (ROI) ───────────────────────────────────────────────
 
@@ -476,6 +484,7 @@ class ImageCanvas(QGraphicsView):
             bounds = self.pixmap_item.boundingRect()
             roi = roi.clamped(bounds.width(), bounds.height())
             self._roi_item = ROIItem(roi, bounds, self.roi_changed.emit)
+            self._roi_item.accent = QColor(getattr(self, "_accent", "#16A34A"))
             self._scene.addItem(self._roi_item)
         self.roi_changed.emit(self.get_roi())
 
