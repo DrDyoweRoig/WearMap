@@ -185,3 +185,101 @@ class Measurement:
         if ma == 0 or mb == 0:
             return 0.0
         return math.degrees(math.acos(max(-1.0, min(1.0, dot / (ma * mb)))))
+
+
+# ── Analysis area (ROI) ──────────────────────────────────────────────────
+
+UNIT_TO_MM = {
+    "pm": 1e-9, "nm": 1e-6, "Å": 1e-7, "μm": 1e-3, "mm": 1.0,
+    "cm": 10.0, "m": 1000.0, "km": 1e6, "in": 25.4, "ft": 304.8,
+}
+
+
+@dataclass
+class AnalysisROI:
+    """Axis-aligned rectangle in image pixels."""
+    x: float
+    y: float
+    w: float
+    h: float
+
+    def contains(self, pt: Tuple[float, float]) -> bool:
+        return self.x <= pt[0] <= self.x + self.w and self.y <= pt[1] <= self.y + self.h
+
+    def area_px(self) -> float:
+        return self.w * self.h
+
+    def clamped(self, img_w: float, img_h: float, min_size: float = 5.0) -> "AnalysisROI":
+        w = min(max(self.w, min_size), img_w)
+        h = min(max(self.h, min_size), img_h)
+        x = min(max(self.x, 0.0), img_w - w)
+        y = min(max(self.y, 0.0), img_h - h)
+        return AnalysisROI(x, y, w, h)
+
+
+def flip_roi(roi: AnalysisROI, axis: str, width: float, height: float) -> AnalysisROI:
+    if axis == "h":
+        return AnalysisROI(width - roi.x - roi.w, roi.y, roi.w, roi.h)
+    return AnalysisROI(roi.x, height - roi.y - roi.h, roi.w, roi.h)
+
+
+@dataclass
+class ROIStats:
+    n_striations: int
+    per_puech: dict
+    mean_len: Optional[float]
+    sd_len: Optional[float]
+    area: float
+    area_unit: str
+    density_per_mm2: Optional[float]
+    n_points: int
+
+
+def compute_roi_stats(roi: AnalysisROI, measurements, cal: Calibration,
+                      jaw: str, side: str) -> ROIStats:
+    lengths = []
+    per_puech = {1: 0, 2: 0, 3: 0, 4: 0}
+    n_points = 0
+    for m in measurements:
+        if m.mtype == MeasurementType.DISTANCE and len(m.points) >= 2:
+            mid = ((m.points[0][0] + m.points[1][0]) / 2,
+                   (m.points[0][1] + m.points[1][1]) / 2)
+            if roi.contains(mid):
+                lengths.append(cal.to_real(m.pixel_value()))
+                p = m.puech(jaw, side)
+                if p in per_puech:
+                    per_puech[p] += 1
+        elif m.mtype in (MeasurementType.COUNT, MeasurementType.PITS):
+            n_points += sum(1 for p in m.points if roi.contains(p))
+    n = len(lengths)
+    mean = sum(lengths) / n if n else None
+    if n == 0:
+        sd = None
+    elif n == 1:
+        sd = 0.0
+    else:
+        sd = math.sqrt(sum((v - mean) ** 2 for v in lengths) / (n - 1))
+    area_px = roi.area_px()
+    area = cal.to_real_area(area_px)
+    density = None
+    if cal.is_calibrated and cal.unit in UNIT_TO_MM:
+        mm_per_px = cal.scale * UNIT_TO_MM[cal.unit]
+        area_mm2 = area_px * mm_per_px ** 2
+        density = n / area_mm2 if area_mm2 > 0 else None
+    return ROIStats(n, per_puech, mean, sd, area, cal.unit_str(is_area=True),
+                    density, n_points)
+
+
+ROI_HEADERS = ["Image", "Width", "Height", "Unit", "Area", "Striations",
+               "P1", "P2", "P3", "P4", "Mean length", "SD length",
+               "Density (/mm²)", "Points"]
+
+
+def roi_export_row(image_name: str, roi: AnalysisROI, stats: ROIStats,
+                   cal: Calibration) -> list:
+    def f(v, nd=4):
+        return "-" if v is None else f"{v:.{nd}f}"
+    return [image_name, f(cal.to_real(roi.w)), f(cal.to_real(roi.h)), cal.unit_str(),
+            f(stats.area), stats.n_striations,
+            stats.per_puech[1], stats.per_puech[2], stats.per_puech[3], stats.per_puech[4],
+            f(stats.mean_len), f(stats.sd_len), f(stats.density_per_mm2, 2), stats.n_points]
