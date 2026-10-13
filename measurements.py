@@ -1,4 +1,5 @@
 import math
+import os
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
 from enum import Enum
@@ -32,6 +33,19 @@ def compute_puech(angle_deg: float, jaw: str, side: str) -> int:
         #             P4 Distomesial when mdx≠costat (Lower-Left OR Upper-Right)
         return 3 if mdx == costat else 4
     return 0
+
+
+def flip_points(points, axis: str, width: float, height: float):
+    """Mirror points inside a width x height image. axis: 'h' or 'v'."""
+    if axis == "h":
+        return [(width - x, y) for x, y in points]
+    return [(x, height - y) for x, y in points]
+
+
+def summary_path(base: str) -> str:
+    """Insert '_summary' before the final extension only."""
+    root, ext = os.path.splitext(base)
+    return f"{root}_summary{ext}"
 
 
 class MeasurementType(Enum):

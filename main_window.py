@@ -17,7 +17,7 @@ from PyQt6.QtWidgets import (
 from canvas import ImageCanvas, Tool, PUECH_COLORS
 from dialogs import AboutDialog, CalibrationDialog, ScaleBarDialog, StriationTypeNamesDialog
 from landmark_dialog import LandmarkingDialog
-from measurements import MeasurementType
+from measurements import MeasurementType, summary_path
 from style import MAIN_STYLE
 
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".gif", ".webp", ".plu", ".plux"}
@@ -771,12 +771,12 @@ class MainWindow(QMainWindow):
     def _flip(self, axis: str):
         if self.canvas._original_pil is None:
             return
-        from PIL import ImageOps
-        if axis == "h":
-            self.canvas._original_pil = ImageOps.mirror(self.canvas._original_pil)
+        self.canvas.flip_image(axis)
+        if self._special_filter:
+            self._apply_special(self._special_filter)
         else:
-            self.canvas._original_pil = ImageOps.flip(self.canvas._original_pil)
-        self.canvas.rotate_image(0)   # reload with 0° (just redraws)
+            self._apply_filters()
+        self._refresh_table()
 
     def _save_image(self):
         if not self.canvas.pixmap_item:
@@ -846,7 +846,7 @@ class MainWindow(QMainWindow):
                 is_txt = "txt" in path or "txt" in sel
                 ext    = ".txt" if is_txt else ".csv"
                 base   = path if path.endswith(ext) else path + ext
-                summ_path = base.replace(ext, f"_summary{ext}")
+                summ_path = summary_path(base)
                 if is_txt:
                     self._write_txt(base, detail_hdrs, detail_rows)
                     self._write_txt(summ_path, summ_hdrs, summ_rows)
