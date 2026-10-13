@@ -307,7 +307,7 @@ class LandmarkingDialog(QDialog):
         ll.setSpacing(6)
 
         hdr = QLabel("Images")
-        hdr.setStyleSheet("font-weight:700; color:#14532D; font-size:13px;")
+        hdr.setObjectName("heading")
         ll.addWidget(hdr)
 
         self._list = QListWidget()
@@ -341,7 +341,7 @@ class LandmarkingDialog(QDialog):
         ll.addLayout(nrow)
 
         self._status_lbl = QLabel("No images loaded.")
-        self._status_lbl.setStyleSheet("color:#4B7A5A; font-size:11px;")
+        self._status_lbl.setObjectName("muted")
         self._status_lbl.setWordWrap(True)
         ll.addWidget(self._status_lbl)
         ll.addStretch()
@@ -360,7 +360,7 @@ class LandmarkingDialog(QDialog):
 
         info_row = QHBoxLayout()
         self._lm_lbl = QLabel("Select an image from the list to start.")
-        self._lm_lbl.setStyleSheet("color:#166534; font-size:12px;")
+        self._lm_lbl.setObjectName("muted")
         info_row.addWidget(self._lm_lbl)
         info_row.addStretch()
         reset_btn = QPushButton("Reset Landmarks")
@@ -391,10 +391,6 @@ class LandmarkingDialog(QDialog):
         ctrl.addStretch()
 
         run_btn = QPushButton("▶  Run Analysis")
-        run_btn.setStyleSheet(
-            "font-weight:bold; padding:5px 18px;"
-            "background:#22C55E; color:#14532D; border-radius:4px;"
-        )
         run_btn.setToolTip(
             "Run Generalized Procrustes Analysis + k-means clustering\n"
             "on all images that have the correct number of landmarks."
@@ -405,12 +401,6 @@ class LandmarkingDialog(QDialog):
 
         # ── Results table ─────────────────────────────────────────────────
         grp = QGroupBox("Results")
-        grp.setStyleSheet(
-            "QGroupBox{font-weight:700;color:#14532D;"
-            "border:1px solid #86EFAC;border-radius:6px;"
-            "margin-top:6px;padding:6px;}"
-            "QGroupBox::title{subcontrol-origin:margin;left:8px;padding:0 4px;}"
-        )
         grp_l = QVBoxLayout(grp)
 
         self._results_table = QTableWidget(0, 5)
@@ -439,7 +429,7 @@ class LandmarkingDialog(QDialog):
     def _sep() -> QFrame:
         f = QFrame()
         f.setFrameShape(QFrame.Shape.HLine)
-        f.setStyleSheet("background:#BBF7D0; max-height:1px; border:none;")
+        f.setObjectName("sep")
         return f
 
     # ── Session management ────────────────────────────────────────────────

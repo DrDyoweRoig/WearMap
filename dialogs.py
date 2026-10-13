@@ -148,9 +148,7 @@ class ScaleBarDialog(QDialog):
 
         self._preview = QLabel()
         self._preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._preview.setStyleSheet(
-            "color:#4B5563; font-size:12px; padding:4px;"
-        )
+        self._preview.setObjectName("muted")
         layout.addWidget(self._preview)
         self._spin.valueChanged.connect(self._update_preview)
         self._update_preview()
@@ -202,7 +200,7 @@ class StriationTypeNamesDialog(QDialog):
             "to assign types to selected measurements."
         )
         info.setWordWrap(True)
-        info.setStyleSheet("color:#4B7A5A; font-size:12px;")
+        info.setObjectName("muted")
         layout.addWidget(info)
 
         layout.addWidget(self._form_widget)
