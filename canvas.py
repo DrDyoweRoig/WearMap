@@ -167,7 +167,8 @@ class ROIItem(QGraphicsItem):
 
     def mousePressEvent(self, event):
         mode = self._hit(event.pos())
-        if event.button() != Qt.MouseButton.LeftButton or mode is None:
+        ctrl = bool(event.modifiers() & Qt.KeyboardModifier.ControlModifier)
+        if event.button() != Qt.MouseButton.LeftButton or mode is None or ctrl:
             event.ignore()
             return
         self._mode, self._press, self._start = mode, event.pos(), self.roi
@@ -529,6 +530,7 @@ class ImageCanvas(QGraphicsView):
         px = QPixmap.fromImage(img)
         # Clear measurements (they'd be in wrong positions after rotation)
         self.clear_all()
+        self.set_roi(None)   # image shape changes; the old area no longer fits
         self._scene.removeItem(self.pixmap_item)
         self.pixmap_item = self._scene.addPixmap(px)
         self.pixmap_item.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
@@ -540,6 +542,8 @@ class ImageCanvas(QGraphicsView):
         if self._original_pil is None or self.pixmap_item is None:
             return
         from PIL import ImageOps
+        self._finalize_count()
+        self._cancel_in_progress()
         pil = self._original_pil
         w, h = pil.width, pil.height
         self._original_pil = ImageOps.mirror(pil) if axis == "h" else ImageOps.flip(pil)

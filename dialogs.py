@@ -335,7 +335,7 @@ class AboutDialog(QDialog):
         layout.setSpacing(14)
         layout.setContentsMargins(24, 24, 24, 24)
 
-        title = QLabel("<h2 style='color:#14532D;'>Wearmap</h2>")
+        title = QLabel("<h2>Wearmap</h2>")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
 

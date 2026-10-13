@@ -80,3 +80,41 @@ def test_resize_handle_changes_size(canvas):
     QTest.mouseRelease(vp, Qt.MouseButton.LeftButton, pos=end)
     r = canvas.get_roi()
     assert r.x == 50 and r.y == 20 and r.w > 60 and r.h > 40
+
+
+def test_rotate_clears_stale_roi(canvas):
+    canvas.set_roi(AnalysisROI(150, 10, 40, 40))
+    canvas.rotate_image(90)
+    assert canvas.get_roi() is None
+
+
+def test_flip_flips_unfinished_count_points(canvas):
+    from canvas import Tool
+    canvas.set_tool(Tool.COUNT)
+    canvas._handle_count_click((100, 50))
+    canvas.flip_image("h")
+    canvas.set_tool(Tool.SELECT)
+    assert canvas.measurements[-1].points == [(100.0, 50.0)]   # 200 wide -> 100 stays
+    canvas.set_tool(Tool.COUNT)
+    canvas._handle_count_click((30, 50))
+    canvas.flip_image("h")
+    canvas.set_tool(Tool.SELECT)
+    assert canvas.measurements[-1].points == [(170.0, 50.0)]
+
+
+def test_ctrl_drag_inside_roi_pans_instead_of_moving(canvas):
+    canvas.set_roi(AnalysisROI(10, 10, 180, 80))
+    canvas.scale(6, 6)                       # zoom in so the view can scroll
+    canvas.centerOn(100, 50)
+    vp = canvas.viewport()
+    start = canvas.mapFromScene(100, 50)
+    end = start + QPoint(40, 0)
+    before_roi = canvas.get_roi()
+    before_scroll = canvas.horizontalScrollBar().value()
+    QTest.mousePress(vp, Qt.MouseButton.LeftButton,
+                     Qt.KeyboardModifier.ControlModifier, pos=start)
+    QTest.mouseMove(vp, end)
+    QTest.mouseRelease(vp, Qt.MouseButton.LeftButton,
+                       Qt.KeyboardModifier.ControlModifier, pos=end)
+    assert canvas.get_roi() == before_roi
+    assert canvas.horizontalScrollBar().value() != before_scroll
