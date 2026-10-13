@@ -272,6 +272,58 @@ class StriationTypeNamesDialog(QDialog):
         return dict(self._names)
 
 
+class ROIDialog(QDialog):
+    """Ask the size of the analysis area in calibrated units (px if uncalibrated)."""
+
+    def __init__(self, unit: str, scale: float, img_w: int, img_h: int, parent=None):
+        super().__init__(parent)
+        self._scale = scale if scale > 0 else 1.0
+        self._img_w, self._img_h = img_w, img_h
+        self.setWindowTitle("Analysis Area")
+        self.setMinimumWidth(340)
+        self.setModal(True)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(12)
+        layout.addWidget(QLabel(
+            "Set the size of the rectangular analysis area.<br>"
+            "Afterwards drag it into place on the image and resize it with its handles."
+        ))
+        form = QFormLayout()
+        self.w_spin = QDoubleSpinBox()
+        self.h_spin = QDoubleSpinBox()
+        for sp, full in ((self.w_spin, img_w), (self.h_spin, img_h)):
+            sp.setDecimals(4)
+            sp.setRange(0.0001, 1e12)
+            sp.setSuffix(f" {unit}")
+            sp.setValue(full * self._scale / 3)
+            sp.valueChanged.connect(self._validate)
+        form.addRow("Width:", self.w_spin)
+        form.addRow("Height:", self.h_spin)
+        layout.addLayout(form)
+        self.hint = QLabel(
+            f"Image size: {img_w * self._scale:.4g} \u00d7 {img_h * self._scale:.4g} {unit}"
+        )
+        layout.addWidget(self.hint)
+        self.btns = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        self.btns.accepted.connect(self.accept)
+        self.btns.rejected.connect(self.reject)
+        layout.addWidget(self.btns)
+        self._validate()
+
+    def get_size_px(self):
+        return self.w_spin.value() / self._scale, self.h_spin.value() / self._scale
+
+    def _validate(self):
+        w, h = self.get_size_px()
+        ok = 0 < w <= self._img_w and 0 < h <= self._img_h
+        self.btns.button(QDialogButtonBox.StandardButton.Ok).setEnabled(ok)
+        self.hint.setStyleSheet("" if ok else "color: #DC2626;")
+
+
 class AboutDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)

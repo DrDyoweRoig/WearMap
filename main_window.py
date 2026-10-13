@@ -15,10 +15,16 @@ from PyQt6.QtWidgets import (
 )
 
 from canvas import ImageCanvas, Tool, PUECH_COLORS
-from dialogs import AboutDialog, CalibrationDialog, ScaleBarDialog, StriationTypeNamesDialog
+from dialogs import (
+    AboutDialog, CalibrationDialog, ROIDialog, ScaleBarDialog,
+    StriationTypeNamesDialog,
+)
 from landmark_dialog import LandmarkingDialog
 from paths import resource_path
-from measurements import MeasurementType, summary_path
+from measurements import (
+    AnalysisROI, MeasurementType, ROI_HEADERS, compute_roi_stats,
+    roi_export_row, summary_path,
+)
 from style import MAIN_STYLE
 
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".gif", ".webp", ".plu", ".plux"}
@@ -37,6 +43,7 @@ class MainWindow(QMainWindow):
         self.canvas.measurement_clicked.connect(self._on_canvas_measurement_clicked)
         self.canvas.calibration_line_drawn.connect(self._on_calibration_line)
         self.canvas.position_changed.connect(self._update_position)
+        self.canvas.roi_changed.connect(lambda _roi: self._refresh_roi_panel())
 
         # Multi-image navigation state
         self._image_files: list[str] = []
@@ -114,6 +121,15 @@ class MainWindow(QMainWindow):
         btn_row.addWidget(self.del_btn)
         btn_row.addWidget(self.clear_btn)
         layout.addLayout(btn_row)
+
+        roi_title = QLabel("Analysis Area")
+        roi_title.setObjectName("panelTitle")
+        layout.addWidget(roi_title)
+        self.roi_label = QLabel()
+        self.roi_label.setTextFormat(Qt.TextFormat.RichText)
+        self.roi_label.setWordWrap(True)
+        layout.addWidget(self.roi_label)
+        self._refresh_roi_panel()
 
         # Striation type panel (hidden by default, toggled from Analysis menu)
         self._stype_panel = QWidget()
@@ -307,6 +323,47 @@ class MainWindow(QMainWindow):
 
         return grp
 
+    def _create_roi(self):
+        if not self.canvas.pixmap_item:
+            QMessageBox.information(self, "Analysis Area", "Open an image first.")
+            return
+        cal = self.canvas.calibration
+        unit = cal.unit if cal.is_calibrated else "px"
+        scale = cal.scale if cal.is_calibrated else 1.0
+        iw, ih = self.canvas.image_size()
+        dlg = ROIDialog(unit, scale, iw, ih, self)
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            return
+        w, h = dlg.get_size_px()
+        c = self.canvas.mapToScene(self.canvas.viewport().rect().center())
+        self.canvas.set_roi(AnalysisROI(c.x() - w / 2, c.y() - h / 2, w, h))
+
+    def _refresh_roi_panel(self):
+        if not hasattr(self, "roi_label"):
+            return
+        roi = self.canvas.get_roi()
+        if roi is None:
+            self.roi_label.setText(
+                "<i>No analysis area.<br>Edit \u2192 Create Analysis Area\u2026</i>")
+            return
+        cal = self.canvas.calibration
+        st = compute_roi_stats(roi, self.canvas.measurements, cal,
+                               self.canvas.jaw, self.canvas.side)
+        unit = cal.unit_str()
+
+        def f(v, nd=3):
+            return "\u2014" if v is None else f"{v:.{nd}g}"
+        dens = "\u2014" if st.density_per_mm2 is None else f"{st.density_per_mm2:.1f} /mm\u00b2"
+        pu = st.per_puech
+        self.roi_label.setText(
+            f"Size: <b>{cal.to_real(roi.w):.4g} \u00d7 {cal.to_real(roi.h):.4g} {unit}</b>"
+            f" &nbsp;Area: {st.area:.6g} {st.area_unit}<br>"
+            f"Striations: <b>{st.n_striations}</b> &nbsp;"
+            f"(P1 {pu[1]} \u00b7 P2 {pu[2]} \u00b7 P3 {pu[3]} \u00b7 P4 {pu[4]})<br>"
+            f"Length: {f(st.mean_len)} \u00b1 {f(st.sd_len)} {unit}<br>"
+            f"Density: {dens} &nbsp; Points: {st.n_points}"
+        )
+
     def _on_tooth_context_changed(self):
         jaw   = self._cb_jaw.currentText()
         side  = self._cb_side.currentText()
@@ -389,6 +446,9 @@ class MainWindow(QMainWindow):
         em.addSeparator()
         self._add_action(em, "📏  Scale Bar…",            None,           self._show_scale_bar)
         self._add_action(em, "✕  Remove Scale Bar",       None,           self.canvas.remove_scale_bar)
+        em.addSeparator()
+        self._add_action(em, "\u25ad  Create Analysis Area\u2026", None, self._create_roi)
+        self._add_action(em, "\u2715  Remove Analysis Area",       None, lambda: self.canvas.set_roi(None))
 
         am = mb.addMenu("Analysis")
         self._add_action(am, "Clear All Measurements", None, self._clear_all)
@@ -764,6 +824,18 @@ class MainWindow(QMainWindow):
                                self.canvas.jaw, self.canvas.side, self.canvas.tooth))
         return result
 
+    def _roi_rows(self) -> list:
+        rows = []
+        for p, state in self._image_states.items():
+            roi = state.get("roi")
+            if roi is None:
+                continue
+            cal = state["calibration"]
+            st = compute_roi_stats(roi, state["measurements"], cal,
+                                   state.get("jaw", "Upper"), state.get("side", "Right"))
+            rows.append(roi_export_row(os.path.basename(p), roi, st, cal))
+        return rows
+
     def _show_scale_bar(self):
         dlg = ScaleBarDialog(self.canvas.calibration, self)
         if dlg.exec() == QDialog.DialogCode.Accepted:
@@ -842,25 +914,31 @@ class MainWindow(QMainWindow):
             summ_hdrs = ["Image", "Puech", "Category", "Count",
                          "Mean Distance", "Std Dev", "Unit"]
             summ_rows = self._build_summary_rows(all_rows)
+            roi_rows = self._roi_rows()
 
             if "xlsx" in path or "xlsx" in sel:
                 if not path.endswith(".xlsx"):
                     path += ".xlsx"
                 self._write_xlsx_two_sheets(path, detail_hdrs, detail_rows,
-                                            summ_hdrs, summ_rows)
+                                            summ_hdrs, summ_rows, roi_rows)
                 saved = path
             else:
                 is_txt = "txt" in path or "txt" in sel
                 ext    = ".txt" if is_txt else ".csv"
                 base   = path if path.endswith(ext) else path + ext
                 summ_path = summary_path(base)
+                roi_path = os.path.splitext(base)[0] + "_roi" + ext
                 if is_txt:
                     self._write_txt(base, detail_hdrs, detail_rows)
                     self._write_txt(summ_path, summ_hdrs, summ_rows)
+                    if roi_rows:
+                        self._write_txt(roi_path, ROI_HEADERS, roi_rows)
                 else:
                     self._write_csv(base, detail_hdrs, detail_rows)
                     self._write_csv(summ_path, summ_hdrs, summ_rows)
-                saved = f"{base}\n{summ_path}"
+                    if roi_rows:
+                        self._write_csv(roi_path, ROI_HEADERS, roi_rows)
+                saved = f"{base}\n{summ_path}" + (f"\n{roi_path}" if roi_rows else "")
 
             QMessageBox.information(self, "Export", f"Saved successfully:\n{saved}")
         except Exception as e:
@@ -907,7 +985,8 @@ class MainWindow(QMainWindow):
         return rows
 
     @staticmethod
-    def _write_xlsx_two_sheets(path, detail_hdrs, detail_rows, summ_hdrs, summ_rows):
+    def _write_xlsx_two_sheets(path, detail_hdrs, detail_rows, summ_hdrs, summ_rows,
+                               roi_rows=None):
         import openpyxl
         from openpyxl.styles import Font, PatternFill, Alignment
         wb = openpyxl.Workbook()
@@ -942,6 +1021,8 @@ class MainWindow(QMainWindow):
 
         ws2 = wb.create_sheet("Summary")
         fill_sheet(ws2, summ_hdrs, summ_rows, "4ADE80", "F0FFF4")
+        if roi_rows:
+            fill_sheet(wb.create_sheet("ROI"), ROI_HEADERS, roi_rows, "86EFAC", "ECFDF5")
 
         wb.save(path)
 
@@ -998,6 +1079,7 @@ class MainWindow(QMainWindow):
                 item = QTableWidgetItem(text)
                 item.setForeground(color)
                 self.table.setItem(row, col, item)
+        self._refresh_roi_panel()
 
     # ── Striation type helpers ────────────────────────────────────────────
 
@@ -1089,6 +1171,7 @@ class MainWindow(QMainWindow):
         if reply == QMessageBox.StandardButton.Yes:
             self.canvas.clear_all()
             self.table.setRowCount(0)
+            self._refresh_roi_panel()
 
     # ── Drag & drop ───────────────────────────────────────────────────────
 
