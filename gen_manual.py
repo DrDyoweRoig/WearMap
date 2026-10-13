@@ -99,18 +99,18 @@ bullet("Resoluci\u00f3 de pantalla: m\u00ednim 1280 \u00d7 800 px", "Resoluci\u0
 h1("3. Primers passos")
 h2("3.1 Obrir una imatge")
 body("Hi ha tres maneres d\u2019obrir una imatge:")
-bullet("Feu clic al bot\u00f3 \U0001f4c2 Open de la barra d\u2019eines.")
+bullet("Feu clic al bot\u00f3 Open de la barra d\u2019eines.")
 bullet("Aneu al men\u00fa File \u2192 Open Image.")
 bullet("Arrossegueu i deixeu anar (drag & drop) un fitxer d\u2019imatge directament sobre la finestra.")
 body("Formats acceptats: PNG, JPG, JPEG, TIF, TIFF, BMP, GIF, WEBP.")
 
 h2("3.2 Navegaci\u00f3 entre imatges")
-body("Si la imatge oberta es troba dins d\u2019una carpeta amb m\u00e9s imatges, els botons \u25c0 Prev i Next \u25b6 de la barra d\u2019eines permeten navegar-hi. Cada imatge mant\u00e9 les seves pr\u00f2pies mesures i calibraci\u00f3 independentment.")
+body("Si la imatge oberta es troba dins d\u2019una carpeta amb m\u00e9s imatges, els botons Prev i Next de la barra d\u2019eines permeten navegar-hi. Cada imatge mant\u00e9 les seves pr\u00f2pies mesures i calibraci\u00f3 independentment.")
 
 h2("3.3 Zoom i desplacement")
 bullet("Roda del ratol\u00ed: zoom d\u2019entrada i sortida.")
 bullet("Bot\u00f3 Select (S) actiu + arrossegar: desplacement per la imatge.")
-bullet("\U0001f50d+ / \U0001f50d\u2212 / Fit: zoom manual i ajust a la finestra.")
+bullet("Zoom in / Zoom out / Fit: zoom manual i ajust a la finestra.")
 
 # ── 4
 h1("4. Context de la dent")
@@ -154,6 +154,14 @@ body("Estableix l\u2019escala real de la imatge. Dibuixeu una l\u00ednia sobre u
 h2("5.8 Labels  [L]")
 body("Bot\u00f3 de commutaci\u00f3 que mostra o amaga les etiquetes de text sobre la imatge. Les mesures segueixen actives.")
 
+h2("5.9 \u00c0rea d\u2019an\u00e0lisi")
+body("Permet delimitar una zona rectangular de la imatge i comptar nom\u00e9s les estries i els par\u00e0metres que hi cauen a dins.")
+bullet("Edit \u2192 Create Analysis Area\u2026 (o el bot\u00f3 Area box): indiqueu l\u2019amplada i l\u2019al\u00e7ada en unitats calibrades (en px si la imatge no est\u00e0 calibrada).")
+bullet("L\u2019\u00e0rea apareix al centre de la vista. Arrossegueu-la per situar-la i useu les nanses de les vores i les cantonades per canviar-ne la mida (eina Select activa).")
+bullet("El quadre Analysis Area del panell lateral s\u2019actualitza en directe: nombre d\u2019estries, recompte per Puech (P1\u2013P4), longitud mitjana \u00b1 desviaci\u00f3, \u00e0rea, densitat (estries/mm\u00b2) i punts (Count/Pits).")
+bullet("Una estria es compta dins l\u2019\u00e0rea quan el seu punt mig hi \u00e9s.")
+bullet("Cada imatge t\u00e9 la seva pr\u00f2pia \u00e0rea. Edit \u2192 Remove Analysis Area l\u2019elimina.")
+
 # ── 6
 h1("6. Filtratge d\u2019imatge")
 body("El panell lateral cont\u00e9 la pestanya Filters amb els controls seg\u00fcents:")
@@ -179,6 +187,9 @@ body("Una fila per cada mesura amb les columnes: Image, ID, Type, Tooth, Jaw, Si
 
 h2("7.3 Full \u00abSummary\u00bb \u2014 estad\u00edstica per Puech")
 body("Una fila per cada categoria de Puech (1\u20134) per imatge, m\u00e9s una fila TOTAL al final de cada imatge amb el recompte global, la mitjana i la desviaci\u00f3 est\u00e0ndard de totes les dist\u00e0ncies.")
+
+h2("7.4 Full \u00abROI\u00bb \u2014 \u00e0rea d\u2019an\u00e0lisi")
+body("Si alguna imatge t\u00e9 una \u00e0rea d\u2019an\u00e0lisi, l\u2019Excel inclou un tercer full ROI amb una fila per imatge: mida, \u00e0rea, estries, recompte per Puech, longitud mitjana i desviaci\u00f3, densitat i punts. En CSV o TXT es genera un fitxer addicional amb el sufix _roi.")
 
 # ── 8
 h1("8. Dreceres de teclat")
@@ -209,6 +220,10 @@ for k, d in shortcuts:
     rb = row.cells[0].paragraphs[0].add_run(k)
     fmt(rb, bold=True, size=11, color=GREEN_DARK)
     fmt(row.cells[1].paragraphs[0].add_run(d), size=11)
+
+h2("8.1 Ajuda i aparen\u00e7a")
+bullet("F1 (Help \u2192 Read Manual): obre aquest manual.", "F1 (Help \u2192 Read Manual):")
+bullet("View \u2192 Theme: canvia entre tema clar i tema fosc. L\u2019elecci\u00f3 es recorda.", "View \u2192 Theme:")
 
 # ── 9
 h1("9. Resoluci\u00f3 de problemes")
