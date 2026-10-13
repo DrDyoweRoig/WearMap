@@ -159,6 +159,7 @@ body("Lets you delimit a rectangular region of the image and count only the stri
 bullet("Edit → Create Analysis Area… (or the Area box button): enter the width and height in calibrated units (in px if the image is not calibrated).")
 bullet("The area appears in the centre of the view. Drag it to position it and use the handles on its edges and corners to resize it (with the Pan tool active).")
 bullet("The Analysis Area box in the side panel updates live: number of striations, count per Puech class (P1–P4), mean length ± standard deviation, area, density (striations/mm²) and points (Count/Pits).")
+bullet("Hold Ctrl and drag to pan the image even when the pointer is over the area.")
 bullet("A striation counts as inside the area when its midpoint is inside.")
 bullet("Each image has its own area. Edit → Remove Analysis Area deletes it.")
 
