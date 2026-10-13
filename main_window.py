@@ -1,12 +1,12 @@
 import os
 import sys
 
-from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtCore import Qt, QSize, QUrl
 from PyQt6.QtGui import (
     QAction, QColor, QDragEnterEvent, QDropEvent,
     QKeySequence, QShortcut,
 )
-from PyQt6.QtGui import QPixmap
+from PyQt6.QtGui import QDesktopServices, QPixmap
 from PyQt6.QtWidgets import (
     QCheckBox, QComboBox, QDialog, QFileDialog, QFrame, QGridLayout,
     QGroupBox, QHeaderView, QHBoxLayout, QLabel, QMainWindow, QMessageBox,
@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import (
 from canvas import ImageCanvas, Tool, PUECH_COLORS
 from dialogs import AboutDialog, CalibrationDialog, ScaleBarDialog, StriationTypeNamesDialog
 from landmark_dialog import LandmarkingDialog
+from paths import resource_path
 from measurements import MeasurementType, summary_path
 from style import MAIN_STYLE
 
@@ -404,7 +405,13 @@ class MainWindow(QMainWindow):
                          self._open_landmarking)
 
         hm = mb.addMenu("Help")
+        self._add_action(hm, "Read Manual", "F1", self._open_manual)
         self._add_action(hm, "About Wearmap", None, lambda: AboutDialog(self).exec())
+
+    def _open_manual(self):
+        path = resource_path("Wearmap_Manual.docx")
+        if not (os.path.exists(path) and QDesktopServices.openUrl(QUrl.fromLocalFile(path))):
+            QMessageBox.warning(self, "Read Manual", f"Could not open the manual:\n{path}")
 
     def _add_action(self, menu, text, shortcut, slot):
         act = QAction(text, self)
