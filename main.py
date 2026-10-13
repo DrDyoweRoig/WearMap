@@ -20,7 +20,7 @@ def main():
             pass
     app = QApplication(sys.argv)
     app.setApplicationName("Wearmap")
-    app.setApplicationVersion("1.0.0")
+    app.setApplicationVersion("1.0.3")
     app.setOrganizationName("Wearmap Project")
 
     icon_path = resource_path("logo.ico")

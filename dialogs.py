@@ -340,7 +340,7 @@ class AboutDialog(QDialog):
         layout.addWidget(title)
 
         body = QLabel(
-            "<b>Version 1.0.0</b><br><br>"
+            "<b>Version 1.0.3</b><br><br>"
             "Image analysis tool for dental wear research.<br><br>"
             "<b>Features:</b><br>"
             "\u2022 Distance, area and angle measurements<br>"

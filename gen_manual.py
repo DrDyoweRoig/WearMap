@@ -73,7 +73,7 @@ r.font.color.rgb = GREEN_DARK
 
 p = doc.add_paragraph()
 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-r = p.add_run("User Manual  ·  Version 1.0")
+r = p.add_run("User Manual  ·  Version 1.0.3")
 r.font.name = "Calibri"; r.font.size = Pt(14); r.font.color.rgb = GREEN_MED
 
 p = doc.add_paragraph()
@@ -243,7 +243,7 @@ doc.add_page_break()
 p = doc.add_paragraph()
 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
 p.paragraph_format.space_before = Pt(60)
-r = p.add_run("Wearmap v1.0  ·  Dental wear analysis software")
+r = p.add_run("Wearmap v1.0.3  ·  Dental wear analysis software")
 r.font.name = "Calibri"; r.font.size = Pt(10); r.font.color.rgb = GREY
 
 doc.save("Wearmap_Manual.docx")
