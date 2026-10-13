@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_all
 
-datas = [('logo.png', '.'), ('logo.ico', '.')]
+datas = [('logo.png', '.'), ('logo.ico', '.'), ('Wearmap_Manual.docx', '.'), ('icons', 'icons')]
 binaries = []
 hiddenimports = []
 tmp_ret = collect_all('PyQt6')

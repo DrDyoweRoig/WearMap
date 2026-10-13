@@ -1,12 +1,12 @@
 import os
 import sys
 
-from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtCore import Qt, QSize, QUrl
 from PyQt6.QtGui import (
     QAction, QColor, QDragEnterEvent, QDropEvent,
     QKeySequence, QShortcut,
 )
-from PyQt6.QtGui import QPixmap
+from PyQt6.QtGui import QDesktopServices, QPixmap
 from PyQt6.QtWidgets import (
     QCheckBox, QComboBox, QDialog, QFileDialog, QFrame, QGridLayout,
     QGroupBox, QHeaderView, QHBoxLayout, QLabel, QMainWindow, QMessageBox,
@@ -15,10 +15,18 @@ from PyQt6.QtWidgets import (
 )
 
 from canvas import ImageCanvas, Tool, PUECH_COLORS
-from dialogs import AboutDialog, CalibrationDialog, ScaleBarDialog, StriationTypeNamesDialog
+from dialogs import (
+    AboutDialog, CalibrationDialog, ROIDialog, ScaleBarDialog,
+    StriationTypeNamesDialog,
+)
 from landmark_dialog import LandmarkingDialog
-from measurements import MeasurementType
-from style import MAIN_STYLE
+from paths import resource_path
+from measurements import (
+    AnalysisROI, MeasurementType, ROI_HEADERS, compute_roi_stats,
+    roi_export_row, summary_path,
+)
+from icons import icon
+from theme import build_qss, current_theme, get_tokens, set_theme
 
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".gif", ".webp", ".plu", ".plux"}
 
@@ -29,13 +37,13 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Wearmap \u2014 Image Analysis")
         self.setMinimumSize(1180, 740)
         self.setAcceptDrops(True)
-        self.setStyleSheet(MAIN_STYLE)
 
         self.canvas = ImageCanvas()
         self.canvas.measurement_added.connect(self._on_measurement_added)
         self.canvas.measurement_clicked.connect(self._on_canvas_measurement_clicked)
         self.canvas.calibration_line_drawn.connect(self._on_calibration_line)
         self.canvas.position_changed.connect(self._update_position)
+        self.canvas.roi_changed.connect(lambda _roi: self._refresh_roi_panel())
 
         # Multi-image navigation state
         self._image_files: list[str] = []
@@ -53,6 +61,7 @@ class MainWindow(QMainWindow):
         self._build_toolbar()
         self._build_statusbar()
         self._build_shortcuts()
+        self.apply_theme(current_theme())
 
     # ── Layout ────────────────────────────────────────────────────────────
 
@@ -100,7 +109,8 @@ class MainWindow(QMainWindow):
         self.table.setAlternatingRowColors(True)
         self.table.verticalHeader().setVisible(False)
         self.table.itemSelectionChanged.connect(self._on_table_selection_changed)
-        layout.addWidget(self.table)
+        self.table.setMinimumHeight(170)
+        layout.addWidget(self.table, 1)
 
         btn_row = QHBoxLayout()
         self.del_btn = QPushButton("Delete")
@@ -113,6 +123,15 @@ class MainWindow(QMainWindow):
         btn_row.addWidget(self.del_btn)
         btn_row.addWidget(self.clear_btn)
         layout.addLayout(btn_row)
+
+        roi_title = QLabel("Analysis Area")
+        roi_title.setObjectName("panelTitle")
+        layout.addWidget(roi_title)
+        self.roi_label = QLabel()
+        self.roi_label.setTextFormat(Qt.TextFormat.RichText)
+        self.roi_label.setWordWrap(True)
+        layout.addWidget(self.roi_label)
+        self._refresh_roi_panel()
 
         # Striation type panel (hidden by default, toggled from Analysis menu)
         self._stype_panel = QWidget()
@@ -151,7 +170,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(lbl2)
         self.info_label = QLabel("No image loaded.\nDrag & drop or use File \u2192 Open.")
         self.info_label.setWordWrap(True)
-        self.info_label.setStyleSheet("color: #4B7A5A; font-size: 12px;")
+        self.info_label.setObjectName("muted")
         layout.addWidget(self.info_label)
 
         layout.addWidget(self._sep())
@@ -161,10 +180,8 @@ class MainWindow(QMainWindow):
         layout.addWidget(lbl3)
         self.cal_label = QLabel("Not calibrated (px).\nUse \u229e Calibrate to set scale.")
         self.cal_label.setWordWrap(True)
-        self.cal_label.setStyleSheet("color: #4B7A5A; font-size: 12px;")
+        self.cal_label.setObjectName("muted")
         layout.addWidget(self.cal_label)
-
-        layout.addStretch()
 
         # Logo bottom-right
         _base = sys._MEIPASS if getattr(sys, "frozen", False) else os.path.dirname(os.path.abspath(__file__))
@@ -175,12 +192,18 @@ class MainWindow(QMainWindow):
             _px = QPixmap(_logo_path)
             if not _px.isNull():
                 _logo_lbl.setPixmap(_px.scaled(
-                    82, 82,
+                    56, 56,
                     Qt.AspectRatioMode.KeepAspectRatio,
                     Qt.TransformationMode.SmoothTransformation,
                 ))
         layout.addWidget(_logo_lbl)
-        return w
+        from PyQt6.QtWidgets import QScrollArea
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setWidget(w)
+        return scroll
 
     # ── Filters tab ───────────────────────────────────────────────────────
 
@@ -255,18 +278,6 @@ class MainWindow(QMainWindow):
 
     def _build_tooth_context(self) -> QGroupBox:
         grp = QGroupBox("Tooth Context")
-        grp.setStyleSheet("""
-            QGroupBox {
-                font-weight: 700; color: #14532D;
-                border: 1px solid #86EFAC; border-radius: 6px;
-                margin-top: 8px; padding: 8px 6px 6px 6px;
-                background: #ECFDF5;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin; left: 8px; padding: 0 4px;
-                background: #ECFDF5;
-            }
-        """)
         grid = QGridLayout(grp)
         grid.setSpacing(6)
         grid.setContentsMargins(6, 4, 6, 6)
@@ -296,7 +307,8 @@ class MainWindow(QMainWindow):
             "<span style='color:#22C55E'>■</span>3=Mesial &nbsp;"
             "<span style='color:#F97316'>■</span>4=Distal</small>"
         )
-        legend.setStyleSheet("color: #4B7A5A;")
+        legend.setObjectName("muted")
+        legend.setWordWrap(True)
         legend.setTextFormat(Qt.TextFormat.RichText)
         grid.addWidget(legend, 1, 2, 1, 2)
 
@@ -305,6 +317,47 @@ class MainWindow(QMainWindow):
             cb.currentTextChanged.connect(self._on_tooth_context_changed)
 
         return grp
+
+    def _create_roi(self):
+        if not self.canvas.pixmap_item:
+            QMessageBox.information(self, "Analysis Area", "Open an image first.")
+            return
+        cal = self.canvas.calibration
+        unit = cal.unit if cal.is_calibrated else "px"
+        scale = cal.scale if cal.is_calibrated else 1.0
+        iw, ih = self.canvas.image_size()
+        dlg = ROIDialog(unit, scale, iw, ih, self)
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            return
+        w, h = dlg.get_size_px()
+        c = self.canvas.mapToScene(self.canvas.viewport().rect().center())
+        self.canvas.set_roi(AnalysisROI(c.x() - w / 2, c.y() - h / 2, w, h))
+
+    def _refresh_roi_panel(self):
+        if not hasattr(self, "roi_label"):
+            return
+        roi = self.canvas.get_roi()
+        if roi is None:
+            self.roi_label.setText(
+                "<i>No analysis area.<br>Edit \u2192 Create Analysis Area\u2026</i>")
+            return
+        cal = self.canvas.calibration
+        st = compute_roi_stats(roi, self.canvas.measurements, cal,
+                               self.canvas.jaw, self.canvas.side)
+        unit = cal.unit_str()
+
+        def f(v, nd=3):
+            return "\u2014" if v is None else f"{v:.{nd}g}"
+        dens = "\u2014" if st.density_per_mm2 is None else f"{st.density_per_mm2:.1f} /mm\u00b2"
+        pu = st.per_puech
+        self.roi_label.setText(
+            f"Size: <b>{cal.to_real(roi.w):.4g} \u00d7 {cal.to_real(roi.h):.4g} {unit}</b>"
+            f" &nbsp;Area: {st.area:.6g} {st.area_unit}<br>"
+            f"Striations: <b>{st.n_striations}</b> &nbsp;"
+            f"(P1 {pu[1]} \u00b7 P2 {pu[2]} \u00b7 P3 {pu[3]} \u00b7 P4 {pu[4]})<br>"
+            f"Length: {f(st.mean_len)} \u00b1 {f(st.sd_len)} {unit}<br>"
+            f"Density: {dens} &nbsp; Points: {st.n_points}"
+        )
 
     def _on_tooth_context_changed(self):
         jaw   = self._cb_jaw.currentText()
@@ -317,7 +370,7 @@ class MainWindow(QMainWindow):
     def _sep() -> QFrame:
         f = QFrame()
         f.setFrameShape(QFrame.Shape.HLine)
-        f.setStyleSheet("background: #BBF7D0; max-height: 1px; border: none;")
+        f.setObjectName("sep")
         return f
 
     # ── Filter methods ────────────────────────────────────────────────────
@@ -364,30 +417,34 @@ class MainWindow(QMainWindow):
         mb = self.menuBar()
 
         fm = mb.addMenu("File")
-        self._add_action(fm, "\U0001f4c2  Open Image\u2026",  "Ctrl+O", self._open_image)
-        self._add_action(fm, "\U0001f4c1  Open Folder\u2026", "Ctrl+Shift+O", self._open_folder)
+        self._add_action(fm, "Open Image\u2026",  "Ctrl+O", self._open_image)
+        self._add_action(fm, "Open Folder\u2026", "Ctrl+Shift+O", self._open_folder)
         fm.addSeparator()
-        self._add_action(fm, "\U0001f4be  Export\u2026",      "Ctrl+E", self._export)
-        self._add_action(fm, "\U0001f5bc\ufe0f  Save Image\u2026", "Ctrl+Shift+S", self._save_image)
+        self._add_action(fm, "Export\u2026",      "Ctrl+E", self._export)
+        self._add_action(fm, "Save Image\u2026", "Ctrl+Shift+S", self._save_image)
         fm.addSeparator()
         self._add_action(fm, "Quit", "Ctrl+Q", self.close)
 
         vm = mb.addMenu("View")
+        self._theme_menu_hook(vm)
         self._add_action(vm, "Fit to Window", "Ctrl+0",       self.canvas.fit_view)
         self._add_action(vm, "Zoom In",       "Ctrl+=",       self.canvas.zoom_in)
         self._add_action(vm, "Zoom Out",      "Ctrl+-",       self.canvas.zoom_out)
         self._add_action(vm, "Reset Zoom",    "Ctrl+Shift+0", self.canvas.zoom_reset)
 
         em = mb.addMenu("Edit")
-        self._add_action(em, "↻  Rotate 90° CW",          "Ctrl+Shift+R", lambda: self._rotate(90))
-        self._add_action(em, "↺  Rotate 90° CCW",         None,           lambda: self._rotate(-90))
-        self._add_action(em, "↕  Rotate 180°",            None,           lambda: self._rotate(180))
+        self._add_action(em, "Rotate 90° CW",          "Ctrl+Shift+R", lambda: self._rotate(90))
+        self._add_action(em, "Rotate 90° CCW",         None,           lambda: self._rotate(-90))
+        self._add_action(em, "Rotate 180°",            None,           lambda: self._rotate(180))
         em.addSeparator()
-        self._add_action(em, "↔  Flip Horizontal",        None,           lambda: self._flip("h"))
-        self._add_action(em, "↕  Flip Vertical",          None,           lambda: self._flip("v"))
+        self._add_action(em, "Flip Horizontal",        None,           lambda: self._flip("h"))
+        self._add_action(em, "Flip Vertical",          None,           lambda: self._flip("v"))
         em.addSeparator()
-        self._add_action(em, "📏  Scale Bar…",            None,           self._show_scale_bar)
-        self._add_action(em, "✕  Remove Scale Bar",       None,           self.canvas.remove_scale_bar)
+        self._add_action(em, "Scale Bar…",            None,           self._show_scale_bar)
+        self._add_action(em, "Remove Scale Bar",       None,           self.canvas.remove_scale_bar)
+        em.addSeparator()
+        self._add_action(em, "Create Analysis Area\u2026", None, self._create_roi)
+        self._add_action(em, "Remove Analysis Area",       None, lambda: self.canvas.set_roi(None))
 
         am = mb.addMenu("Analysis")
         self._add_action(am, "Clear All Measurements", None, self._clear_all)
@@ -398,13 +455,45 @@ class MainWindow(QMainWindow):
         self._act_show_stype.setChecked(False)
         self._act_show_stype.toggled.connect(self._stype_panel.setVisible)
         am.addAction(self._act_show_stype)
-        self._add_action(am, "\U0001f3f7  Rename / Add Types…", None, self._rename_stype)
+        self._add_action(am, "Rename / Add Types…", None, self._rename_stype)
         am.addSeparator()
-        self._add_action(am, "\U0001f4cd  2D Landmarking & Procrustes…", "Ctrl+L",
+        self._add_action(am, "2D Landmarking & Procrustes…", "Ctrl+L",
                          self._open_landmarking)
 
         hm = mb.addMenu("Help")
+        self._add_action(hm, "Read Manual", "F1", self._open_manual)
         self._add_action(hm, "About Wearmap", None, lambda: AboutDialog(self).exec())
+
+    def _theme_menu_hook(self, view_menu):
+        from PyQt6.QtGui import QActionGroup
+        sub = view_menu.addMenu("Theme")
+        grp = QActionGroup(self)
+        grp.setExclusive(True)
+        self._theme_acts = {}
+        for name, label in (("light", "Light"), ("dark", "Dark")):
+            act = QAction(label, self, checkable=True)
+            act.triggered.connect(lambda _=False, n=name: self.apply_theme(n))
+            grp.addAction(act)
+            sub.addAction(act)
+            self._theme_acts[name] = act
+        view_menu.addSeparator()
+
+    def apply_theme(self, name: str):
+        tokens = get_tokens(name)
+        set_theme(name)
+        self.setStyleSheet(build_qss(tokens))
+        if getattr(self, "_theme_acts", None) and name in self._theme_acts:
+            self._theme_acts[name].setChecked(True)
+        self.canvas.set_theme(tokens)
+        for act, icon_name in getattr(self, "_icon_acts", []):
+            act.setIcon(icon(icon_name, tokens["text"], 24, tokens["accent_text"]))
+        if hasattr(self, "_measure_btn"):
+            self._measure_btn.setIcon(self._measure_btn.defaultAction().icon())
+
+    def _open_manual(self):
+        path = resource_path("Wearmap_Manual.docx")
+        if not (os.path.exists(path) and QDesktopServices.openUrl(QUrl.fromLocalFile(path))):
+            QMessageBox.warning(self, "Read Manual", f"Could not open the manual:\n{path}")
 
     def _add_action(self, menu, text, shortcut, slot):
         act = QAction(text, self)
@@ -430,68 +519,63 @@ class MainWindow(QMainWindow):
         tb = self.addToolBar("Tools")
         tb.setIconSize(QSize(24, 24))
         tb.setMovable(False)
+        tb.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
 
         self._all_tool_acts: list = []
         self._measure_acts:  list = []
+        self._icon_acts:     list = []
 
-        open_act = QAction("📂  Open", self)
-        open_act.setToolTip("Open image (Ctrl+O)")
-        open_act.triggered.connect(self._open_image)
-        tb.addAction(open_act)
+        def action(text, tip, icon_name, slot=None, checkable=False):
+            act = QAction(text, self)
+            act.setToolTip(tip)
+            act.setCheckable(checkable)
+            if slot is not None:
+                act.triggered.connect(slot)
+            self._icon_acts.append((act, icon_name))
+            return act
+
+        tb.addAction(action("Open", "Open image (Ctrl+O)", "open", self._open_image))
         tb.addSeparator()
 
-        self._prev_btn = QAction("◀  Prev", self)
-        self._prev_btn.setToolTip("Previous image in folder (Left arrow)")
+        self._prev_btn = action("Prev", "Previous image in folder (Left arrow)", "prev",
+                                lambda: self._navigate(-1))
         self._prev_btn.setEnabled(False)
-        self._prev_btn.triggered.connect(lambda: self._navigate(-1))
         tb.addAction(self._prev_btn)
-
-        self._nav_lbl = QLabel("  —  ")
-        self._nav_lbl.setStyleSheet("color: #166534; padding: 0 4px; font-size: 12px;")
+        self._nav_lbl = QLabel("  \u2014  ")
+        self._nav_lbl.setObjectName("navLabel")
         tb.addWidget(self._nav_lbl)
-
-        self._next_btn = QAction("Next  ▶", self)
-        self._next_btn.setToolTip("Next image in folder (Right arrow)")
+        self._next_btn = action("Next", "Next image in folder (Right arrow)", "next",
+                                lambda: self._navigate(1))
         self._next_btn.setEnabled(False)
-        self._next_btn.triggered.connect(lambda: self._navigate(1))
         tb.addAction(self._next_btn)
         tb.addSeparator()
 
         # Pan
-        self._act_select = QAction("☞  Pan", self)
-        self._act_select.setToolTip("Pan / drag the image  [S]")
-        self._act_select.setCheckable(True)
+        self._act_select = action("Pan", "Pan / drag the image  [S]", "pan",
+                                  lambda: self._activate_tool(Tool.SELECT, self._act_select),
+                                  checkable=True)
         self._act_select.setChecked(True)
-        self._act_select.triggered.connect(
-            lambda: self._activate_tool(Tool.SELECT, self._act_select)
-        )
         self._all_tool_acts.append(self._act_select)
         tb.addAction(self._act_select)
 
         # Measure dropdown
         self._measure_btn = QToolButton()
-        self._measure_btn.setPopupMode(
-            QToolButton.ToolButtonPopupMode.MenuButtonPopup
-        )
-        self._measure_btn.setToolTip(
-            "Measurement tools\nClick = use last tool · Arrow = switch tool"
-        )
+        self._measure_btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
+        self._measure_btn.setIconSize(QSize(24, 24))
+        self._measure_btn.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
+        self._measure_btn.setToolTip("Measurement tools\nClick = use last tool \u00b7 Arrow = switch tool")
         measure_menu = QMenu(self._measure_btn)
         self._measure_btn.setMenu(measure_menu)
 
         for _icon, _label, _tip, _tool in [
-            ("↔", "Distance", "Measure distance  [D]",                           Tool.DISTANCE),
-            ("⬡", "Area",     "Measure area  [A] — right-click to close", Tool.AREA),
-            ("∠", "Angle",    "Measure angle  [G]",                              Tool.ANGLE),
-            ("#",      "Count",    "Count objects  [C] — right-click to finish", Tool.COUNT),
-            ("⋅", "Pits",     "Mark pits  [P] — right-click to finish",   Tool.PITS),
+            ("distance", "Distance", "Measure distance  [D]",                    Tool.DISTANCE),
+            ("area",     "Area",     "Measure area  [A] \u2014 right-click to close", Tool.AREA),
+            ("angle",    "Angle",    "Measure angle  [G]",                       Tool.ANGLE),
+            ("count",    "Count",    "Count objects  [C] \u2014 right-click to finish", Tool.COUNT),
+            ("pits",     "Pits",     "Mark pits  [P] \u2014 right-click to finish",   Tool.PITS),
         ]:
-            _act = QAction(f"{_icon}  {_label}", self)
-            _act.setToolTip(_tip)
-            _act.setCheckable(True)
-            _act.triggered.connect(
-                lambda _, t=_tool, a=_act: self._activate_tool(t, a)
-            )
+            _act = action(_label, _tip, _icon, checkable=True)
+            _act.triggered.connect(lambda _, t=_tool, a=_act: self._activate_tool(t, a))
             self._all_tool_acts.append(_act)
             self._measure_acts.append(_act)
             measure_menu.addAction(_act)
@@ -502,53 +586,38 @@ class MainWindow(QMainWindow):
         tb.addWidget(self._measure_btn)
 
         # Calibrate
-        self._act_cal = QAction("⊞  Calibrate", self)
-        self._act_cal.setToolTip("Set scale calibration  [K]")
-        self._act_cal.setCheckable(True)
-        self._act_cal.triggered.connect(
-            lambda: self._activate_tool(Tool.CALIBRATE, self._act_cal)
-        )
+        self._act_cal = action("Calibrate", "Set scale calibration  [K]", "calibrate",
+                               lambda: self._activate_tool(Tool.CALIBRATE, self._act_cal),
+                               checkable=True)
         self._all_tool_acts.append(self._act_cal)
         tb.addAction(self._act_cal)
+
+        # Analysis area
+        tb.addAction(action("Area box", "Create analysis area (Edit menu)", "roi", self._create_roi))
         tb.addSeparator()
 
-        for icon, tip, fn in [
-            ("🔍+",      "Zoom in (Ctrl+=)",          self.canvas.zoom_in),
-            ("🔍−", "Zoom out (Ctrl+-)",         self.canvas.zoom_out),
-            ("⊟  Fit",      "Fit to window (Ctrl+0)",    self.canvas.fit_view),
-        ]:
-            a = QAction(icon, self)
-            a.setToolTip(tip)
-            a.triggered.connect(fn)
-            tb.addAction(a)
+        tb.addAction(action("Zoom in", "Zoom in (Ctrl+=)", "zoom-in", self.canvas.zoom_in))
+        tb.addAction(action("Zoom out", "Zoom out (Ctrl+-)", "zoom-out", self.canvas.zoom_out))
+        tb.addAction(action("Fit", "Fit to window (Ctrl+0)", "fit", self.canvas.fit_view))
 
-        self._act_labels = QAction("🏷️  Labels", self)
-        self._act_labels.setToolTip("Show / hide measurement labels  [L]")
-        self._act_labels.setCheckable(True)
+        self._act_labels = action("Labels", "Show / hide measurement labels  [L]", "labels",
+                                  checkable=True)
         self._act_labels.setChecked(True)
         self._act_labels.toggled.connect(self.canvas.set_labels_visible)
         tb.addAction(self._act_labels)
 
-        self._act_puech_colors = QAction("🎨  Puech Colors", self)
-        self._act_puech_colors.setToolTip(
-            "Color striations by Puech class\n"
-            "Blue=P1 Horiz · Red=P2 Vert · Green=P3 Mesial · Orange=P4 Distal"
-        )
-        self._act_puech_colors.setCheckable(True)
+        self._act_puech_colors = action(
+            "Puech", "Color striations by Puech class\n"
+            "Blue=P1 Horiz \u00b7 Red=P2 Vert \u00b7 Green=P3 Mesial \u00b7 Orange=P4 Distal",
+            "palette", checkable=True)
         self._act_puech_colors.setChecked(False)
         self._act_puech_colors.toggled.connect(self.canvas.set_puech_colors)
         tb.addAction(self._act_puech_colors)
         tb.addSeparator()
 
-        exp_act = QAction("💾  Export", self)
-        exp_act.setToolTip("Export measurements (Ctrl+E)")
-        exp_act.triggered.connect(self._export)
-        tb.addAction(exp_act)
-
-        img_act = QAction("🖼️  Save Image", self)
-        img_act.setToolTip("Save annotated image (Ctrl+Shift+S)")
-        img_act.triggered.connect(self._save_image)
-        tb.addAction(img_act)
+        tb.addAction(action("Export", "Export measurements (Ctrl+E)", "export", self._export))
+        tb.addAction(action("Save image", "Save annotated image (Ctrl+Shift+S)", "image",
+                            self._save_image))
 
     # ── Keyboard shortcuts ────────────────────────────────────────────────
 
@@ -584,17 +653,14 @@ class MainWindow(QMainWindow):
 
     def _build_statusbar(self):
         sb = self.statusBar()
-        style = "padding: 0 10px; color: #166534;"
         self._pos_lbl  = QLabel("x=\u2014  y=\u2014")
-        self._pos_lbl.setStyleSheet(style)
+        self._pos_lbl.setObjectName("pill")
         self._cal_lbl  = QLabel("Calibration: px")
-        self._cal_lbl.setStyleSheet(style)
+        self._cal_lbl.setObjectName("pill")
         self._hint_lbl = QLabel("Open an image to start")
-        self._hint_lbl.setStyleSheet("color: #4ADE80; font-style: italic; padding: 0 10px;")
+        self._hint_lbl.setObjectName("hint")
         sb.addWidget(self._pos_lbl)
-        sb.addWidget(QLabel("|"))
         sb.addWidget(self._cal_lbl)
-        sb.addWidget(QLabel("|"))
         sb.addWidget(self._hint_lbl)
 
     # ── Signal handlers ───────────────────────────────────────────────────
@@ -757,6 +823,18 @@ class MainWindow(QMainWindow):
                                self.canvas.jaw, self.canvas.side, self.canvas.tooth))
         return result
 
+    def _roi_rows(self) -> list:
+        rows = []
+        for p, state in self._image_states.items():
+            roi = state.get("roi")
+            if roi is None:
+                continue
+            cal = state["calibration"]
+            st = compute_roi_stats(roi, state["measurements"], cal,
+                                   state.get("jaw", "Upper"), state.get("side", "Right"))
+            rows.append(roi_export_row(os.path.basename(p), roi, st, cal))
+        return rows
+
     def _show_scale_bar(self):
         dlg = ScaleBarDialog(self.canvas.calibration, self)
         if dlg.exec() == QDialog.DialogCode.Accepted:
@@ -771,12 +849,12 @@ class MainWindow(QMainWindow):
     def _flip(self, axis: str):
         if self.canvas._original_pil is None:
             return
-        from PIL import ImageOps
-        if axis == "h":
-            self.canvas._original_pil = ImageOps.mirror(self.canvas._original_pil)
+        self.canvas.flip_image(axis)
+        if self._special_filter:
+            self._apply_special(self._special_filter)
         else:
-            self.canvas._original_pil = ImageOps.flip(self.canvas._original_pil)
-        self.canvas.rotate_image(0)   # reload with 0° (just redraws)
+            self._apply_filters()
+        self._refresh_table()
 
     def _save_image(self):
         if not self.canvas.pixmap_item:
@@ -835,25 +913,31 @@ class MainWindow(QMainWindow):
             summ_hdrs = ["Image", "Puech", "Category", "Count",
                          "Mean Distance", "Std Dev", "Unit"]
             summ_rows = self._build_summary_rows(all_rows)
+            roi_rows = self._roi_rows()
 
             if "xlsx" in path or "xlsx" in sel:
                 if not path.endswith(".xlsx"):
                     path += ".xlsx"
                 self._write_xlsx_two_sheets(path, detail_hdrs, detail_rows,
-                                            summ_hdrs, summ_rows)
+                                            summ_hdrs, summ_rows, roi_rows)
                 saved = path
             else:
                 is_txt = "txt" in path or "txt" in sel
                 ext    = ".txt" if is_txt else ".csv"
                 base   = path if path.endswith(ext) else path + ext
-                summ_path = base.replace(ext, f"_summary{ext}")
+                summ_path = summary_path(base)
+                roi_path = os.path.splitext(base)[0] + "_roi" + ext
                 if is_txt:
                     self._write_txt(base, detail_hdrs, detail_rows)
                     self._write_txt(summ_path, summ_hdrs, summ_rows)
+                    if roi_rows:
+                        self._write_txt(roi_path, ROI_HEADERS, roi_rows)
                 else:
                     self._write_csv(base, detail_hdrs, detail_rows)
                     self._write_csv(summ_path, summ_hdrs, summ_rows)
-                saved = f"{base}\n{summ_path}"
+                    if roi_rows:
+                        self._write_csv(roi_path, ROI_HEADERS, roi_rows)
+                saved = f"{base}\n{summ_path}" + (f"\n{roi_path}" if roi_rows else "")
 
             QMessageBox.information(self, "Export", f"Saved successfully:\n{saved}")
         except Exception as e:
@@ -900,7 +984,8 @@ class MainWindow(QMainWindow):
         return rows
 
     @staticmethod
-    def _write_xlsx_two_sheets(path, detail_hdrs, detail_rows, summ_hdrs, summ_rows):
+    def _write_xlsx_two_sheets(path, detail_hdrs, detail_rows, summ_hdrs, summ_rows,
+                               roi_rows=None):
         import openpyxl
         from openpyxl.styles import Font, PatternFill, Alignment
         wb = openpyxl.Workbook()
@@ -935,6 +1020,8 @@ class MainWindow(QMainWindow):
 
         ws2 = wb.create_sheet("Summary")
         fill_sheet(ws2, summ_hdrs, summ_rows, "4ADE80", "F0FFF4")
+        if roi_rows:
+            fill_sheet(wb.create_sheet("ROI"), ROI_HEADERS, roi_rows, "86EFAC", "ECFDF5")
 
         wb.save(path)
 
@@ -991,6 +1078,7 @@ class MainWindow(QMainWindow):
                 item = QTableWidgetItem(text)
                 item.setForeground(color)
                 self.table.setItem(row, col, item)
+        self._refresh_roi_panel()
 
     # ── Striation type helpers ────────────────────────────────────────────
 
@@ -1082,6 +1170,7 @@ class MainWindow(QMainWindow):
         if reply == QMessageBox.StandardButton.Yes:
             self.canvas.clear_all()
             self.table.setRowCount(0)
+            self._refresh_roi_panel()
 
     # ── Drag & drop ───────────────────────────────────────────────────────
 

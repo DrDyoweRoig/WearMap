@@ -14,6 +14,10 @@ pyinstaller ^
     --windowed ^
     --name "Wearmap" ^
     --icon "logo.ico" ^
+    --add-data "Wearmap_Manual.docx;." ^
+    --add-data "logo.ico;." ^
+    --add-data "logo.png;." ^
+    --add-data "icons;icons" ^
     --collect-all PyQt6 ^
     main.py
 

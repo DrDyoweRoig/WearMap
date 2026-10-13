@@ -6,11 +6,14 @@ from typing import List, Optional, Tuple
 from PyQt6.QtCore import Qt, QPointF, QRectF, pyqtSignal
 from PyQt6.QtGui import (
     QBrush, QColor, QFont, QFontMetricsF, QImage, QPainter, QPen, QPixmap,
-    QPolygonF, QImageReader,
+    QPolygonF, QImageReader, QCursor, QPainterPath,
 )
 from PyQt6.QtWidgets import QGraphicsItem, QGraphicsView, QGraphicsScene
 
-from measurements import Calibration, Measurement, MeasurementType, compute_puech
+from measurements import (
+    AnalysisROI, Calibration, Measurement, MeasurementType, compute_puech,
+    flip_points, flip_roi,
+)
 
 PUECH_COLORS = {
     1: "#3B82F6",  # Horizontal - blue
@@ -64,6 +67,145 @@ class ScaleBarItem(QGraphicsItem):
         tx = (self._bar_px - self._text_w) / 2
         painter.drawText(QPointF(tx, -(self._TICK_EXTRA + 3)), self._label)
         painter.restore()
+
+
+class ROIItem(QGraphicsItem):
+    """Movable / resizable analysis rectangle (scene units = image px)."""
+    HANDLE_PX = 9        # handle size on screen
+    HIT_PX = 7           # grab tolerance on screen
+
+    def __init__(self, roi: AnalysisROI, bounds: QRectF, on_change):
+        super().__init__()
+        self._roi = AnalysisROI(roi.x, roi.y, roi.w, roi.h)
+        self._bounds = bounds
+        self._on_change = on_change
+        self._mode = None            # None | "move" | set of edges {"l","r","t","b"}
+        self._press = QPointF()
+        self._start = self._roi
+        self.accent = QColor("#16A34A")
+        self.setAcceptHoverEvents(True)
+        self.setZValue(50)
+
+    @property
+    def roi(self) -> AnalysisROI:
+        return AnalysisROI(self._roi.x, self._roi.y, self._roi.w, self._roi.h)
+
+    # geometry ---------------------------------------------------------
+    def _scale(self) -> float:
+        views = self.scene().views() if self.scene() else []
+        return views[0].transform().m11() if views else 1.0
+
+    def boundingRect(self) -> QRectF:
+        m = 200.0
+        r = self._roi
+        return QRectF(r.x - m, r.y - m, r.w + 2 * m, r.h + 2 * m)
+
+    def shape(self) -> QPainterPath:
+        m = (self.HANDLE_PX + self.HIT_PX) / 2 / max(self._scale(), 1e-6)
+        r = self._roi
+        path = QPainterPath()
+        path.addRect(QRectF(r.x - m, r.y - m, r.w + 2 * m, r.h + 2 * m))
+        return path
+
+    def _hit(self, p: QPointF):
+        r, tol = self._roi, self.HIT_PX / max(self._scale(), 1e-6)
+        edges = set()
+        if abs(p.x() - r.x) <= tol:
+            edges.add("l")
+        elif abs(p.x() - (r.x + r.w)) <= tol:
+            edges.add("r")
+        if abs(p.y() - r.y) <= tol:
+            edges.add("t")
+        elif abs(p.y() - (r.y + r.h)) <= tol:
+            edges.add("b")
+        near = (r.x - tol <= p.x() <= r.x + r.w + tol and
+                r.y - tol <= p.y() <= r.y + r.h + tol)
+        if edges and near:
+            return edges
+        if r.contains((p.x(), p.y())):
+            return "move"
+        return None
+
+    # painting ---------------------------------------------------------
+    def paint(self, painter: QPainter, option, widget=None):
+        r = self._roi
+        rect = QRectF(r.x, r.y, r.w, r.h)
+        fill = QColor(self.accent)
+        fill.setAlpha(35)
+        pen = QPen(self.accent, 2, Qt.PenStyle.DashLine)
+        pen.setCosmetic(True)
+        painter.setPen(pen)
+        painter.setBrush(QBrush(fill))
+        painter.drawRect(rect)
+        h = self.HANDLE_PX / max(self._scale(), 1e-6)
+        hp = QPen(self.accent, 1.5)
+        hp.setCosmetic(True)
+        painter.setPen(hp)
+        painter.setBrush(QBrush(Qt.GlobalColor.white))
+        xs = (rect.left(), rect.center().x(), rect.right())
+        ys = (rect.top(), rect.center().y(), rect.bottom())
+        for i, x in enumerate(xs):
+            for j, y in enumerate(ys):
+                if i == 1 and j == 1:
+                    continue
+                painter.drawRect(QRectF(x - h / 2, y - h / 2, h, h))
+
+    # interaction ------------------------------------------------------
+    def hoverMoveEvent(self, event):
+        m = self._hit(event.pos())
+        if m == "move":
+            self.setCursor(Qt.CursorShape.SizeAllCursor)
+        elif isinstance(m, set):
+            if len(m) == 2:
+                self.setCursor(Qt.CursorShape.SizeFDiagCursor if m in ({"l", "t"}, {"r", "b"})
+                               else Qt.CursorShape.SizeBDiagCursor)
+            else:
+                self.setCursor(Qt.CursorShape.SizeHorCursor if m & {"l", "r"}
+                               else Qt.CursorShape.SizeVerCursor)
+        else:
+            self.unsetCursor()
+
+    def mousePressEvent(self, event):
+        mode = self._hit(event.pos())
+        ctrl = bool(event.modifiers() & Qt.KeyboardModifier.ControlModifier)
+        if event.button() != Qt.MouseButton.LeftButton or mode is None or ctrl:
+            event.ignore()
+            return
+        self._mode, self._press, self._start = mode, event.pos(), self.roi
+        event.accept()
+
+    def mouseMoveEvent(self, event):
+        if self._mode is None:
+            return
+        d = event.pos() - self._press
+        b, st, mn = self._bounds, self._start, 5.0
+        if self._mode == "move":
+            x = min(max(st.x + d.x(), b.left()), b.right() - st.w)
+            y = min(max(st.y + d.y(), b.top()), b.bottom() - st.h)
+            new = AnalysisROI(x, y, st.w, st.h)
+        else:
+            l, t, r, bt = st.x, st.y, st.x + st.w, st.y + st.h
+            if "l" in self._mode:
+                l = min(max(l + d.x(), b.left()), r - mn)
+            if "r" in self._mode:
+                r = max(min(r + d.x(), b.right()), l + mn)
+            if "t" in self._mode:
+                t = min(max(t + d.y(), b.top()), bt - mn)
+            if "b" in self._mode:
+                bt = max(min(bt + d.y(), b.bottom()), t + mn)
+            new = AnalysisROI(l, t, r - l, bt - t)
+        self.set_roi(new)
+        event.accept()
+
+    def mouseReleaseEvent(self, event):
+        self._mode = None
+        event.accept()
+
+    def set_roi(self, roi: AnalysisROI):
+        self.prepareGeometryChange()
+        self._roi = AnalysisROI(roi.x, roi.y, roi.w, roi.h)
+        self.update()
+        self._on_change(self.roi)
 
 
 class Tool:
@@ -278,6 +420,7 @@ class ImageCanvas(QGraphicsView):
     measurement_clicked = pyqtSignal(int)   # emits measurement id
     calibration_line_drawn = pyqtSignal(float)
     position_changed = pyqtSignal(float, float)
+    roi_changed = pyqtSignal(object)        # AnalysisROI | None
 
     COLORS = [
         "#22C55E", "#0EA5E9", "#F59E0B", "#EF4444",
@@ -319,6 +462,32 @@ class ImageCanvas(QGraphicsView):
         self.show_labels      = True
         self.use_puech_colors = False
         self._scale_bar_item: Optional[ScaleBarItem] = None
+        self._roi_item: Optional[ROIItem] = None
+        self._accent = "#16A34A"
+
+    def set_theme(self, tokens: dict):
+        self.setBackgroundBrush(QBrush(QColor(tokens["canvas_bg"])))
+        self._accent = tokens["accent"]
+        if self._roi_item is not None:
+            self._roi_item.accent = QColor(self._accent)
+            self._roi_item.update()
+
+    # ── Analysis area (ROI) ───────────────────────────────────────────────
+
+    def get_roi(self) -> Optional[AnalysisROI]:
+        return self._roi_item.roi if self._roi_item else None
+
+    def set_roi(self, roi: Optional[AnalysisROI]):
+        if self._roi_item is not None:
+            self._scene.removeItem(self._roi_item)
+            self._roi_item = None
+        if roi is not None and self.pixmap_item is not None:
+            bounds = self.pixmap_item.boundingRect()
+            roi = roi.clamped(bounds.width(), bounds.height())
+            self._roi_item = ROIItem(roi, bounds, self.roi_changed.emit)
+            self._roi_item.accent = QColor(getattr(self, "_accent", "#16A34A"))
+            self._scene.addItem(self._roi_item)
+        self.roi_changed.emit(self.get_roi())
 
     # ── Scale bar ─────────────────────────────────────────────────────────
 
@@ -361,11 +530,31 @@ class ImageCanvas(QGraphicsView):
         px = QPixmap.fromImage(img)
         # Clear measurements (they'd be in wrong positions after rotation)
         self.clear_all()
+        self.set_roi(None)   # image shape changes; the old area no longer fits
         self._scene.removeItem(self.pixmap_item)
         self.pixmap_item = self._scene.addPixmap(px)
         self.pixmap_item.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
         self._scene.setSceneRect(QRectF(px.rect()))
         self.fitInView(self.pixmap_item, Qt.AspectRatioMode.KeepAspectRatio)
+
+    def flip_image(self, axis: str):
+        """Mirror the image and all measurements ('h' or 'v'). Keeps measurements."""
+        if self._original_pil is None or self.pixmap_item is None:
+            return
+        from PIL import ImageOps
+        self._finalize_count()
+        self._cancel_in_progress()
+        pil = self._original_pil
+        w, h = pil.width, pil.height
+        self._original_pil = ImageOps.mirror(pil) if axis == "h" else ImageOps.flip(pil)
+        for m, item in zip(self.measurements, self.measurement_items):
+            item.prepareGeometryChange()
+            m.points = flip_points(m.points, axis, w, h)
+            item.update()
+        roi = self.get_roi()
+        if roi is not None:
+            self.set_roi(flip_roi(roi, axis, w, h))
+        self._pil_to_canvas(self._original_pil.convert("RGB"))
 
     # ── Image loading ─────────────────────────────────────────────────────
 
@@ -409,6 +598,7 @@ class ImageCanvas(QGraphicsView):
         self._active_count = None
         self._active_count_item = None
         self._scale_bar_item = None   # cleared by _scene.clear()
+        self._roi_item = None
         self._next_id = 1
         self._color_idx = 0
         self._in_progress.clear()
@@ -638,6 +828,8 @@ class ImageCanvas(QGraphicsView):
             self._scene.removeItem(self._active_count_item)
         self._active_count = None
         self._active_count_item = None
+        self._next_id = 1
+        self._color_idx = 0
 
     def update_calibration(self, cal: Calibration):
         self.calibration = cal
@@ -679,6 +871,7 @@ class ImageCanvas(QGraphicsView):
             "jaw":          self.jaw,
             "side":         self.side,
             "tooth":        self.tooth,
+            "roi":          self.get_roi(),
         }
 
     def restore_state(self, state: dict):
@@ -697,6 +890,7 @@ class ImageCanvas(QGraphicsView):
                                    self.show_labels, self.use_puech_colors)
             self._scene.addItem(item)
             self.measurement_items.append(item)
+        self.set_roi(state.get("roi"))
 
     def set_puech_colors(self, enabled: bool):
         self.use_puech_colors = enabled

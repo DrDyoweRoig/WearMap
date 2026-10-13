@@ -8,16 +8,22 @@ from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIcon
 from main_window import MainWindow
+from paths import resource_path
 
 
 def main():
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Wearmap.App")
+        except Exception:
+            pass
     app = QApplication(sys.argv)
     app.setApplicationName("Wearmap")
     app.setApplicationVersion("1.0.0")
     app.setOrganizationName("Wearmap Project")
 
-    _base = sys._MEIPASS if getattr(sys, "frozen", False) else os.path.dirname(os.path.abspath(__file__))
-    icon_path = os.path.join(_base, "logo.ico")
+    icon_path = resource_path("logo.ico")
     if os.path.exists(icon_path):
         icon = QIcon(icon_path)
         app.setWindowIcon(icon)
