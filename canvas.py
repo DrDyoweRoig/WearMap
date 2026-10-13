@@ -10,7 +10,9 @@ from PyQt6.QtGui import (
 )
 from PyQt6.QtWidgets import QGraphicsItem, QGraphicsView, QGraphicsScene
 
-from measurements import Calibration, Measurement, MeasurementType, compute_puech
+from measurements import (
+    Calibration, Measurement, MeasurementType, compute_puech, flip_points,
+)
 
 PUECH_COLORS = {
     1: "#3B82F6",  # Horizontal - blue
@@ -367,6 +369,20 @@ class ImageCanvas(QGraphicsView):
         self._scene.setSceneRect(QRectF(px.rect()))
         self.fitInView(self.pixmap_item, Qt.AspectRatioMode.KeepAspectRatio)
 
+    def flip_image(self, axis: str):
+        """Mirror the image and all measurements ('h' or 'v'). Keeps measurements."""
+        if self._original_pil is None or self.pixmap_item is None:
+            return
+        from PIL import ImageOps
+        pil = self._original_pil
+        w, h = pil.width, pil.height
+        self._original_pil = ImageOps.mirror(pil) if axis == "h" else ImageOps.flip(pil)
+        for m, item in zip(self.measurements, self.measurement_items):
+            item.prepareGeometryChange()
+            m.points = flip_points(m.points, axis, w, h)
+            item.update()
+        self._pil_to_canvas(self._original_pil.convert("RGB"))
+
     # ── Image loading ─────────────────────────────────────────────────────
 
     def load_image(self, path: str) -> bool:
@@ -638,6 +654,8 @@ class ImageCanvas(QGraphicsView):
             self._scene.removeItem(self._active_count_item)
         self._active_count = None
         self._active_count_item = None
+        self._next_id = 1
+        self._color_idx = 0
 
     def update_calibration(self, cal: Calibration):
         self.calibration = cal
